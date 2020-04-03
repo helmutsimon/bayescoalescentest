@@ -86,10 +86,11 @@ def main(job_no, filename, mutation_rate, length, mfilename, draws, up, dirx):
     print('SFS ='.ljust(25), sfs)
 
     np.set_printoptions(precision=1)
-    print('True branch lengths = '.ljust(25), true_branch_lengths)
-    true_coal_times = np.cumsum(true_branch_lengths[::-1])
-    print('True coalescence times = '.ljust(25), true_coal_times)
-    print('True TMRCA  = '.ljust(25), '%.1f' % np.sum(true_branch_lengths))
+    if true_branch_lengths is not None:
+        print('True branch lengths = '.ljust(25), true_branch_lengths)
+        true_coal_times = np.cumsum(true_branch_lengths[::-1])
+        print('True coalescence times = '.ljust(25), true_coal_times)
+        print('True TMRCA  = '.ljust(25), '%.1f' % np.sum(true_branch_lengths))
     n_seq = np.arange(1, n)
     thom = np.sum(sfs * n_seq) / (n * length * mutation_rate)
     print('Thomson est. TMRCA  = '.ljust(25), "%.1f" % thom)
