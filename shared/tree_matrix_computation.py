@@ -8,6 +8,13 @@ from more_itertools import locate
 from collections import Counter
 import functools
 
+__author__ = "Helmut Simon"
+__copyright__ = "© Copyright 2020, Helmut Simon"
+__license__ = "BSD-3"
+__version__ = "0.0.1"
+__maintainer__ = "Helmut Simon"
+__email__ = "helmut.simon@anu.edu.au"
+__status__ = "Test"
 
 @functools.lru_cache(maxsize=512)
 def replace_zero(s, j):
@@ -74,7 +81,7 @@ def generate_tree_matrices(n):
     return matrices, probs
 
 
-def sample_matrices(n, size):
+def sample_matrices_old(n, size):
     """
         Sample tree matrices for sample size n according to ERM measure.
 
@@ -116,3 +123,45 @@ def sample_matrices(n, size):
     probs = np.array(probs)
     probs = probs / np.sum(probs)
     return matrices, probs, c
+
+
+def sample_matrices(n, size):
+    """
+        Sample tree matrices for sample size n according to ERM measure.
+
+        Parameters
+        ----------
+        n: int
+            Sample size
+        size: int
+            Number of samples.
+
+        Returns
+        -------
+        list
+            List of matrices.
+        numpy.ndarray
+            Probabilities corresponding to matrices
+        Counter
+            Counts of hashes of matrices.
+
+        """
+    c = Counter()
+    count, hashes, matrices = 0, list(), list()
+    while count < size:
+        count += 1
+        f = list()
+        for i in range(1, n):
+            f.append(np.random.choice(i))
+        f = f[::-1]
+        mx = derive_tree_matrix(f)
+        hashmx = mx.tostring()
+        if hashmx not in hashes:
+            matrices.append(mx)
+            hashes.append(hashmx)
+        c[hashmx] += 1
+    probs = [c[hash] for hash in hashes]
+    probs = np.array(probs)
+    probs = probs / np.sum(probs)
+    matrix_file = [{n: matrices}, {n: probs}]
+    return matrix_file
