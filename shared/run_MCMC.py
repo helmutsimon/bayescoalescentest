@@ -14,6 +14,9 @@ import numpy as np
 from scipy.special import binom
 import theano
 import theano.tensor as tt
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
+import seaborn as sns
 
 
 def get_ERM_matrix(n):
@@ -118,4 +121,33 @@ def multiply_variates(trace):
     branch_vars = np.multiply(vars_rel, vars_TTL3)
     return branch_vars
 
+
+def print_pds(pdfname, variates, truevalues=None, savepdf=True, properties=dict(), title=None, xlim=None, ylim=None):
+    """
+    Print posterior distributions as pdf.
+
+    """
+    n = variates.shape[0] + 1
+    sns.set_style("whitegrid")
+    cols = sns.husl_palette(n_colors=n - 1, s=0.9, l=0.6)
+    with PdfPages(pdfname) as pdf:
+        fig = plt.figure()
+        for row, col, label in zip(variates, cols, np.arange(2, n + 1)):
+            sns.kdeplot(row, color=col, label=label, bw='scott', gridsize=500)
+        plt.title(title)
+        plt.xlabel('Generations')
+        plt.ylabel('Frequency', labelpad=25)
+        plt.xlim([0, xlim])
+        plt.ylim([0, ylim])
+        ymax = plt.gca().get_ylim()[1]
+        plt.ticklabel_format(axis='x', style='sci', scilimits=(0,0))
+        plt.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
+        if truevalues is not None:
+            plt.vlines(truevalues, 0, ymax, colors=cols, linestyles='dashed')
+        d = pdf.infodict()
+        for key in properties:
+            d[key] = properties[key]
+        if savepdf:
+            pdf.savefig(fig, bbox_inches='tight')
+    return fig
 
