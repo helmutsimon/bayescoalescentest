@@ -112,10 +112,13 @@ def main(job_no, filename, mutation_rate, length, mfilename, cv_mut, draws, up, 
     outfile.close()
     print('Est. TMRCA = '.ljust(25), '%.1f' % np.sum(np.mean(branch_vars, axis=1)))
 
-    fig, axs = plt.subplots(nrows=2, ncols=1)
-    axs[0] = forestplot(trace, varnames=['probs'])
-    axs[1] = traceplot(trace, varnames=['probs'])
-    plt.savefig(dirx + '/traceplots_' + job_no + '.png')
+    try:
+        fig, axs = plt.subplots(nrows=2, ncols=1)
+        axs[0] = forestplot(trace, varnames=['probs'])
+        axs[1] = traceplot(trace, varnames=['probs'])
+        plt.savefig(dirx + '/traceplots_' + job_no + '.png')
+    except:
+        pass
 
     duration = time() - start_time
     LOGGER.log_message("%.2f" % (duration / 60.), label="Run duration (minutes)".ljust(50))
