@@ -38,11 +38,12 @@ LOGGER = CachingLogger(create_dir=True)
 @click.argument('mutation_rate', type=float)
 @click.argument('length', type=float)
 @click.argument('mfilename', type=click.Path(exists=True))
+@click.option('-c', '--cv_mut', type=float, default=1e-10, help='Coefficient of variation of sequence mutation rate.')
 @click.option('-d', '--draws', type=float, default=50000)
 @click.option('--up/--ep', default=True,
-              help='choose whether to use uninformative (default) or empirical prior.')
+              help='Choose whether to use uninformative (default) or empirical prior.')
 @click.option('-dir', '--dirx', default='data', help='Directory for data and log files. Default is data')
-def main(job_no, filename, mutation_rate, length, mfilename, draws, up, dirx):
+def main(job_no, filename, mutation_rate, length, mfilename, cv_mut, draws, up, dirx):
     start_time = time()
     if not os.path.exists(dirx):
         os.makedirs(dirx)
@@ -65,7 +66,7 @@ def main(job_no, filename, mutation_rate, length, mfilename, draws, up, dirx):
                        label="Imported module".ljust(30))
     draws = int(draws)
     seq_mutation_rate = mutation_rate * length
-    sd_mutation_rate = seq_mutation_rate * 1e-10
+    sd_mutation_rate = seq_mutation_rate * cv_mut
     file_path = dirx + '/' + filename
     with gzip.open(file_path, 'rb') as results:
         results = pickle.load(results)
@@ -92,17 +93,17 @@ def main(job_no, filename, mutation_rate, length, mfilename, draws, up, dirx):
         print('True coalescence times = '.ljust(25), true_coal_times)
         print('True TMRCA  = '.ljust(25), '%.1f' % np.sum(true_branch_lengths))
     n_seq = np.arange(1, n)
-    thom = np.sum(sfs * n_seq) / (n * length * mutation_rate)
+    thom = np.sum(sfs * n_seq) / (n * seq_mutation_rate)
     print('Thomson est. TMRCA  = '.ljust(25), "%.1f" % thom)
-    var_thom = np.sum(sfs * n_seq * n_seq) / (2 * n * length * mutation_rate) ** 2
+    var_thom = np.sum(sfs * n_seq * n_seq) / (2 * n * seq_mutation_rate) ** 2
     print('Thomson std. error = '.ljust(25), '%.1f' % np.sqrt(var_thom), '\n')
 
     with gzip.open(mfilename, 'rb') as mx_details:
         mx_details = pickle.load(mx_details)
-    mcmc_model, trace = run_MCMC.run_MCMC(sfs, seq_mutation_rate, sd_mutation_rate, mx_details,\
+    mcmc_model, trace = run_MCMC.run_MCMC(sfs, seq_mutation_rate, sd_mutation_rate, mx_details,
                                      draws=draws, prior=prior, alpha=alpha, beta=beta)
     branch_vars = run_MCMC.multiply_variates(trace)
-    print('/nEst. branch lengths = '.ljust(25), np.mean(branch_vars, axis=1))
+    print('\nEst. branch lengths = '.ljust(25), np.mean(branch_vars, axis=1))
     fname = dirx + '/branch_vars_' + job_no + '.pklz'
     with gzip.open(fname, 'wb') as buff:
         pickle.dump(branch_vars, buff)
