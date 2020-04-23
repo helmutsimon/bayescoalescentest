@@ -62,7 +62,7 @@ def main(job_no, n, size, filename, dirx):
 
     if filename is None:
         filename = dirx + '/mxs_' + job_no
-    with gzip.open(filename, 'wb') as outfile:
+    with open(filename, 'wb') as outfile:          # See https://stackoverflow.com/questions/33562394 for gzip issue
         pickle.dump(matrix_file, outfile)
     outfile = open(filename, 'r')
     LOGGER.output_file(outfile.name)
