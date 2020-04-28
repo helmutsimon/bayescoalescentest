@@ -70,6 +70,9 @@ def main(job_no, filename, mutation_rate, length, mfilename, cv_mut, draws, up, 
     file_path = dirx + '/' + filename
     with gzip.open(file_path, 'rb') as results:
         results = pickle.load(results)
+    infile = open(file_path, 'r')
+    LOGGER.input_file(infile.name)
+    infile.close()
     sfs, true_branch_lengths, empirical_prior, mu, sd = results[:5]
     n = len(sfs) + 1
     if up:
@@ -100,6 +103,9 @@ def main(job_no, filename, mutation_rate, length, mfilename, cv_mut, draws, up, 
 
     with gzip.open(mfilename, 'rb') as mx_details:
         mx_details = pickle.load(mx_details)
+    infile = open(mfilename, 'r')
+    LOGGER.input_file(infile.name)
+    infile.close()
     mcmc_model, trace = run_MCMC.run_MCMC(sfs, seq_mutation_rate, sd_mutation_rate, mx_details,
                                      draws=draws, prior=prior, alpha=alpha, beta=beta)
     branch_vars = run_MCMC.multiply_variates(trace)
