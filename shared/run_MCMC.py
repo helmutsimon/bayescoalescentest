@@ -11,6 +11,7 @@ from pymc3.distributions.discrete import Categorical
 from pymc3.distributions.dist_math import bound, logpow
 from pymc3.distributions.special import gammaln
 import numpy as np
+from bisect import bisect
 from scipy.special import binom
 import theano
 import theano.tensor as tt
@@ -150,4 +151,36 @@ def print_pds(pdfname, variates, truevalues=None, savepdf=True, properties=dict(
         if savepdf:
             pdf.savefig(fig, bbox_inches='tight')
     return fig
+
+
+def ancestral_process(brvars, ntimes, tlim):
+    """
+    Calculate ancestral process given branch length variates, that is probability of k coalescent points having
+    occurred prior to given range of time points.
+
+    brvars: np.array
+        Array of branch variates output by MCMC.
+    ntimes: integer
+        Number of intervals
+    tlim: float
+        maximum time (approx. TMRCA)
+
+    Returns
+    -------
+    numpy.array
+        Probabilities of coalescence times by time interval
+
+    """
+    n = brvars.shape[0] + 1
+    anc_proc = np.zeros((n, ntimes))
+    r = tlim / ntimes
+    branches_rev = np.flipud(brvars)
+    coal_times = np.cumsum(branches_rev, axis=0)
+    draws = coal_times.shape[1]                             # number of MCMC variates
+    for var_ix in range(draws):
+        for t in range(ntimes):                             # iterating over time intervals
+            k = bisect(coal_times[:,var_ix], t * r)
+            anc_proc[k, t] += 1
+    anc_proc = anc_proc / draws
+    return anc_proc
 
