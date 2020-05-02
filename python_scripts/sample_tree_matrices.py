@@ -16,6 +16,7 @@ from time import time
 import gzip, pickle
 import re
 import more_itertools
+from collections import Counter
 import click
 from scitrack import CachingLogger, get_file_hexdigest
 
@@ -59,6 +60,11 @@ def main(job_no, n, size, filename, dirx):
     probs = matrix_file[1][n]
     assert len(matrices) == len(probs), 'Lists of matrices and probabilities returned not equal in length.'
     LOGGER.log_message(str(len(matrices)), label="Length of matrix list returned".ljust(30))
+    print((time() - start_time) / 60)
+    sys.stdout.flush()
+    mx_counts = Counter(matrices)
+    LOGGER.log_message(str(len(mx_counts)), label="Number of different matrices".ljust(30))
+    LOGGER.log_message(str(max(mx_counts.values())), label="Frequency most common matrix".ljust(30))
 
     if filename is None:
         filename = dirx + '/mxs_' + job_no
@@ -69,7 +75,7 @@ def main(job_no, n, size, filename, dirx):
     outfile.close()
 
     duration = time() - start_time
-    LOGGER.log_message("%.2f" % (duration / 60.), label="Run duration (minutes)".ljust(30))
+    LOGGER.log_message("%.2f" % (duration / 60), label="Run duration (minutes)".ljust(30))
 
 
 if __name__ == "__main__":
