@@ -62,7 +62,8 @@ def main(job_no, n, size, filename, dirx):
     LOGGER.log_message(str(len(matrices)), label="Length of matrix list returned".ljust(30))
     print((time() - start_time) / 60)
     sys.stdout.flush()
-    mx_counts = Counter(matrices)
+    hashmxs = [mx.tostring() for mx in matrices]
+    mx_counts = Counter(hashmxs)
     LOGGER.log_message(str(len(mx_counts)), label="Number of different matrices".ljust(30))
     LOGGER.log_message(str(max(mx_counts.values())), label="Frequency most common matrix".ljust(30))
 
