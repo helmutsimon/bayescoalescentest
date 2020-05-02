@@ -123,7 +123,8 @@ def multiply_variates(trace):
     return branch_vars
 
 
-def print_pds(pdfname, variates, truevalues=None, savepdf=True, properties=dict(), title=None, xlim=None, ylim=None):
+def print_pds(pdfname, variates, labels, truevalues=None, savepdf=True, properties=dict(),
+              title=None, xlim=None, ylim=None, thom=None):
     """
     Print posterior distributions as pdf.
 
@@ -132,8 +133,8 @@ def print_pds(pdfname, variates, truevalues=None, savepdf=True, properties=dict(
     sns.set_style("whitegrid")
     cols = sns.husl_palette(n_colors=n - 1, s=0.9, l=0.6)
     with PdfPages(pdfname) as pdf:
-        fig = plt.figure()
-        for row, col, label in zip(variates, cols, np.arange(2, n + 1)):
+        fig = plt.figure(figsize=(15, 6))
+        for row, col, label in zip(variates, cols, labels):
             sns.kdeplot(row, color=col, label=label, bw='scott', gridsize=500)
         plt.title(title)
         plt.xlabel('Generations')
@@ -145,6 +146,8 @@ def print_pds(pdfname, variates, truevalues=None, savepdf=True, properties=dict(
         plt.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
         if truevalues is not None:
             plt.vlines(truevalues, 0, ymax, colors=cols, linestyles='dashed')
+        if thom is not None:
+            plt.vlines(thom, 0, ymax, colors='black', linestyles='dotted')
         d = pdf.infodict()
         for key in properties:
             d[key] = properties[key]
