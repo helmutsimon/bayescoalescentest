@@ -65,7 +65,7 @@ def main(job_no, n, size, filename, dirx):
     hashmxs = [mx.tostring() for mx in matrices]
     mx_counts = Counter(hashmxs)
     LOGGER.log_message(str(len(mx_counts)), label="Number of different matrices".ljust(30))
-    LOGGER.log_message(str(max(mx_counts.values())), label="Frequency most common matrix".ljust(30))
+    LOGGER.log_message('%.3e' % max(probs), label="Frequency most common matrix".ljust(30))
 
     if filename is None:
         filename = dirx + '/mxs_' + job_no
