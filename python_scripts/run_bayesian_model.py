@@ -119,12 +119,11 @@ def main(job_no, filename, mutation_rate, length, mfilename, cv_mut, draws, up, 
     print('Est. TMRCA = '.ljust(25), '%.1f' % np.sum(np.mean(branch_vars, axis=1)))
 
     try:
-        fig, axs = plt.subplots(nrows=2, ncols=1)
-        axs[0] = forestplot(trace, varnames=['probs'])
-        axs[1] = traceplot(trace, varnames=['probs'])
+        fig, axs = plt.subplots(nrows=4, ncols=2, figsize=(20, 10))
+        traceplot(trace, ax=axs)
         plt.savefig(dirx + '/traceplots_' + job_no + '.png')
     except:
-        pass
+        print('Traceplot not saved.')
 
     duration = time() - start_time
     LOGGER.log_message("%.2f" % (duration / 60.), label="Run duration (minutes)".ljust(50))
