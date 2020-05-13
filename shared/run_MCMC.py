@@ -88,7 +88,7 @@ def run_MCMC(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, prior=None
         conditional_probs = tt.dot(jmx, probs.T)
         sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=conditional_probs, observed=sfs)
 
-        total_length1 = Gamma('total_length', alpha=alpha, beta=beta, testval=alpha)
+        total_length1 = Gamma('total_length', alpha=alpha, beta=beta)
         mut_rate = Beta('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
         total_length = total_length1 * mut_rate
         seg_sites_obs = Poisson('seg_sites_obs', mu=total_length, observed=seg_sites)
