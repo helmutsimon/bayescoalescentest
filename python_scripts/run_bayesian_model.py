@@ -38,7 +38,7 @@ LOGGER = CachingLogger(create_dir=True)
 @click.argument('mutation_rate', type=float)
 @click.argument('length', type=float)
 @click.argument('mfilename', type=click.Path(exists=True))
-@click.option('-c', '--cv_mut', type=float, default=1e-10, help='Coefficient of variation of sequence mutation rate.')
+@click.option('-c', '--cv_mut', type=float, default=1e-6, help='Coefficient of variation of sequence mutation rate.')
 @click.option('-d', '--draws', type=float, default=50000)
 @click.option('--up/--ep', default=True,
               help='Choose whether to use uninformative (default) or empirical prior.')
@@ -119,6 +119,7 @@ def main(job_no, filename, mutation_rate, length, mfilename, cv_mut, draws, up, 
     print('Est. TMRCA = '.ljust(25), '%.1f' % np.sum(np.mean(branch_vars, axis=1)))
 
     try:
+        matplotlib.logging.getLogger('matplotlib.font_manager').disabled = True
         fig, axs = plt.subplots(nrows=4, ncols=2, figsize=(20, 10))
         traceplot(trace, ax=axs)
         plt.savefig(dirx + '/traceplots_' + job_no + '.png')
