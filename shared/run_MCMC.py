@@ -37,6 +37,7 @@ def run_MCMC(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, prior=None
     n = len(sfs) + 1
     if prior is None:
         prior = np.ones(n - 1) / (n - 1)
+    assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
     tree_matrices = mx_details[0][n]
     tree_matrices = [m.T for m in tree_matrices]
     tree_probabilities = mx_details[1][n]
@@ -87,9 +88,8 @@ def run_MCMC(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, prior=None
         conditional_probs = tt.dot(jmx, probs.T)
         sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=conditional_probs, observed=sfs)
 
-        BoundedNormal = Bound(Normal, lower=0)
         total_length1 = Gamma('total_length', alpha=alpha, beta=beta, testval=alpha)
-        mut_rate = BoundedNormal('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
+        mut_rate = Beta('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
         total_length = total_length1 * mut_rate
         seg_sites_obs = Poisson('seg_sites_obs', mu=total_length, observed=seg_sites)
 
