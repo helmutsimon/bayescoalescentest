@@ -36,7 +36,7 @@ def run_MCMC(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, prior=None
 
     n = len(sfs) + 1
     if prior is None:
-        prior = np.ones(n - 1) / (n - 1)
+        prior = np.ones(n - 1)
     assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
     tree_matrices = mx_details[0][n]
     tree_matrices = [m.T for m in tree_matrices]

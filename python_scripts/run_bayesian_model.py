@@ -77,7 +77,7 @@ def main(job_no, filename, mutation_rate, length, mfilename, cv_mut, draws, up, 
     n = len(sfs) + 1
     if up:
         print('Uninformative prior')
-        prior = np.ones(n - 1) / (n - 1)
+        prior = np.ones(n - 1)
         alpha = 1
         beta = 1e-10
     else:
