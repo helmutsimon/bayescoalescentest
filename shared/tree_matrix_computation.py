@@ -165,3 +165,55 @@ def sample_matrices(n, size):
     probs = probs / np.sum(probs)
     matrix_file = [{n: matrices}, {n: probs}]
     return matrix_file
+
+
+def sample_matching_matrices(n, size, sfs=()):
+    """
+        Sample tree matrices for sample size n according to ERM measure.
+
+        Parameters
+        ----------
+        n: int
+            Sample size
+        size: int
+            Number of samples.
+        sfs: list
+            Site frequency spectrum. Only comp[atible matrices are returned.
+
+        Returns
+        -------
+        list
+            List of matrices.
+        numpy.ndarray
+            Probabilities corresponding to matrices
+        Counter
+            Counts of hashes of matrices.
+
+        """
+    c = Counter()
+    count, hashes, matrices = 0, list(), list()
+    while count < size:
+        f = list()
+        for i in range(1, n):
+            f.append(np.random.choice(i))
+        f = f[::-1]
+        mx = derive_tree_matrix(f)
+        reject = False
+        if sfs != ():
+            for i in range(n - 1):
+                if (not np.any(mx[i, :])) and sfs[i]:
+                    reject = True
+                    break
+        if reject:
+            continue
+        count += 1
+        hashmx = mx.tostring()
+        if hashmx not in hashes:
+            matrices.append(mx)
+            hashes.append(hashmx)
+        c[hashmx] += 1
+    probs = [c[hash] for hash in hashes]
+    probs = np.array(probs)
+    probs = probs / np.sum(probs)
+    matrix_file = [{n: matrices}, {n: probs}]
+    return matrix_file
