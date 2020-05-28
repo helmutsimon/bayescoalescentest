@@ -56,11 +56,12 @@ def main(job_no, n, size, sfs, filename, dirx):
                        label="Imported module".ljust(30))
 
     size = int(size)
-    matrix_file = tree_matrix_computation.sample_matching_matrices(n, size, sfs)
+    matrix_file, scount = tree_matrix_computation.sample_matching_matrices(n, size, sfs)
     matrices = matrix_file[0][n]
     probs = matrix_file[1][n]
     assert len(matrices) == len(probs), 'Lists of matrices and probabilities returned not equal in length.'
     LOGGER.log_message(str(len(matrices)), label="Length of matrix list returned".ljust(30))
+    LOGGER.log_message(str(scount), label="Number of matrices tested".ljust(30))
     print((time() - start_time) / 60)
     sys.stdout.flush()
     hashmxs = [mx.tostring() for mx in matrices]

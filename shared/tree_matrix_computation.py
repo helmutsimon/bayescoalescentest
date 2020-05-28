@@ -191,8 +191,9 @@ def sample_matching_matrices(n, size, sfs=()):
 
         """
     c = Counter()
-    count, hashes, matrices = 0, list(), list()
+    count, scount, hashes, matrices = 0, 0, list(), list()
     while count < size:
+        scount += 1
         f = list()
         for i in range(1, n):
             f.append(np.random.choice(i))
@@ -216,4 +217,4 @@ def sample_matching_matrices(n, size, sfs=()):
     probs = np.array(probs)
     probs = probs / np.sum(probs)
     matrix_file = [{n: matrices}, {n: probs}]
-    return matrix_file
+    return matrix_file, scount
