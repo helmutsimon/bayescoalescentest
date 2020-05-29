@@ -202,7 +202,7 @@ def sample_matching_matrices(n, size, sfs=()):
         reject = False
         if sfs != ():
             for i in range(n - 1):
-                if (not np.any(mx[i, :])) and sfs[i]:
+                if (not np.any(mx[:, i])) and sfs[i]:
                     reject = True
                     break
         if reject:
