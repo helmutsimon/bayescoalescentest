@@ -45,8 +45,12 @@ def get_matrix_row(n, tree, ancestors, sub_sample):
     return ancestors, matrix_row, coalescence_time
 
 
-def analyse_tree(n, tree, sub_sample):
+def analyse_tree(n, tree, sub_sample=None):
     """Get matrix and coalescence times for sample tree."""
+    if sub_sample is None:
+        root = tree.get_root()
+        leaves = [i for i in tree.leaves(root)]
+        sub_sample = leaves
     assert all([tree.is_leaf(i) for i in sub_sample]), 'Error: Internal nodes passed to get_matrix'
     ancestors = sub_sample     #i.e. the set of ancestors at each coalescence event
     matrix, coalescence_times = list(), list()
