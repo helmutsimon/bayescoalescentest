@@ -87,6 +87,8 @@ def main(job_no, filename, mutation_rate, length, mfilename, cv_mut, draws, up, 
         empirical_prior += shape_zeros * 0.1
         alpha = (mu / sd) ** 2
         beta = alpha * seq_mutation_rate / mu
+        #alpha = 1
+        #beta = 1e-10
     print('SFS ='.ljust(25), sfs)
 
     np.set_printoptions(precision=1)
