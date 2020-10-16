@@ -6,10 +6,8 @@ This file contains MCMC and associated routines for Bayesian inference of coales
 """
 
 from pymc3 import *
-from pymc3.distributions.multivariate import Multinomial
+from pymc3.distributions.multivariate import Multinomial, Dirichlet
 from pymc3.distributions.discrete import Categorical
-from pymc3.distributions.dist_math import bound, logpow
-from pymc3.distributions.special import gammaln
 import numpy as np
 from bisect import bisect
 from scipy.special import binom
@@ -62,7 +60,6 @@ def run_MCMC(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, prior=None
         tree_matrices = np.array(tree_matrices)
         tree_probabilities = np.array([0.5, 0.5])
     j_n = np.diag(1 / np.arange(2, n + 1))
-    j_ERM = get_ERM_matrix(n).dot(j_n)
     sfs = np.array(sfs)
     seg_sites = sum(sfs)
 
@@ -74,17 +71,7 @@ def run_MCMC(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, prior=None
         tree_matrices = theano.shared(tree_matrices)
         jmx = tree_matrices[tree_index].dot(j_n)
 
-        def dirich_logpdf(value=prior, a=prior):
-            """This is a modification of pymc3.distributions.multivariate.Dirichlet.logp."""
-            u = tt.dot(j_ERM, value.T)
-            return bound(tt.sum(logpow(u, a - 1) - gammaln(a), axis=-1)
-                         + gammaln(tt.sum(a, axis=-1)),
-                         tt.all(u >= 0), tt.all(u <= 1),
-                         tt.all(a > 0),
-                         broadcast_conditions=False)
-
-        stick = distributions.transforms.StickBreaking()
-        probs = DensityDist('probs', dirich_logpdf, shape=(n - 1), testval=prior, transform=stick)
+        probs = Dirichlet('probs', prior)
         conditional_probs = tt.dot(jmx, probs.T)
         sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=conditional_probs, observed=sfs)
 
