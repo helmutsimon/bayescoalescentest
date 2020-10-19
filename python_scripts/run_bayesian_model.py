@@ -38,12 +38,13 @@ LOGGER = CachingLogger(create_dir=True)
 @click.argument('mutation_rate', type=float)
 @click.argument('length', type=float)
 @click.argument('mfilename', type=click.Path(exists=True))
+@click.argument('prior', nargs=-1, type=int)
 @click.option('-c', '--cv_mut', type=float, default=1e-6, help='Coefficient of variation of sequence mutation rate.')
 @click.option('-d', '--draws', type=float, default=50000)
-@click.option('--up/--ep', default=True,
-              help='Choose whether to use uninformative (default) or empirical prior.')
+#@click.option('--up/--ep', default=True,
+#              help='Choose whether to use uninformative (default) or empirical prior.')
 @click.option('-dir', '--dirx', default='data', help='Directory for data and log files. Default is data')
-def main(job_no, filename, mutation_rate, length, mfilename, cv_mut, draws, up, dirx):
+def main(job_no, filename, mutation_rate, length, mfilename, prior, cv_mut, draws, dirx):
     start_time = time()
     if not os.path.exists(dirx):
         os.makedirs(dirx)
@@ -75,22 +76,19 @@ def main(job_no, filename, mutation_rate, length, mfilename, cv_mut, draws, up, 
     infile.close()
     sfs, true_branch_lengths, empirical_prior, mu, sd = results[:5]
     n = len(sfs) + 1
-    if up:
-        print('Uninformative prior')
+    if prior:
+        print('Explicit prior')
+        prior = np.array(prior)
+        assert np.all(prior > 0), 'Prior distribution parameters cannot be <=0.'
+        alpha = (mu / sd) ** 2
+        beta = alpha * seq_mutation_rate / mu
+    else:
+        print('Uninformative prior assumed')
         prior = np.ones(n - 1)
         alpha = 1
         beta = 1e-10
-    else:
-        print('Empirical prior')
-        prior = np.array(empirical_prior)
-        shape_zeros = prior < 0.05  # Can't have Dirichlet parameters that are zero
-        empirical_prior += shape_zeros * 0.1
-        alpha = (mu / sd) ** 2
-        beta = alpha * seq_mutation_rate / mu
-        #alpha = 1
-        #beta = 1e-10
-    print('SFS ='.ljust(25), sfs)
 
+    print('SFS ='.ljust(25), sfs)
     np.set_printoptions(precision=1)
     if true_branch_lengths is not None:
         print('True branch lengths = '.ljust(25), true_branch_lengths)
