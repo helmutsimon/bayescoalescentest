@@ -1,10 +1,10 @@
 # coding=utf-8
 
 
-""" This script creates synthetic data to test Bayesian inference method. It uses msprime and can take a range of
-    demographic parameters. It generates multiple SFS's and orrespponding set of branch lengths, and takes the
-    average of relative branch lengths and segregating sites, plus standard deviation of segregating sites to
-    calculate prior distribution parameters.
+"""
+    This script creates synthetic data to test the Bayesian inference method. It uses msprime and can take a range of
+    demographic parameters. It generates multiple SFS's and corresponding set of branch lengths, and calculates
+    prior distribution parameters from the set of generated trees.
 
     Parameters are job no, (diploid) population size, mutation rate, sequence length, population growth rate,
     sample size, number of replicates, directory for logs and data (-d optional), number of parallel jobs (-j
@@ -12,15 +12,14 @@
 
     A sample run statement is:
 
-    nohup python3 ~/helmutsimonpython/helmutsimonpython/bayescoalescentest/python_scripts/simulate_population.py
-    sp001 1e6 2e-9 1e3 0. 8 1000 > sp001.txt &
+    nohup python3 ~/helmutsimonpython/helmutsimonpython/bayescoalescentest/python_scripts/simulate_multiples.py
+    sp001 1e6 2e-9 1e3 0. 8 1000 > sm001.txt &
 
-    Date: 6 September 2018."""
+"""
 
 import numpy as np
 import pandas as pd
 import os, sys
-import gzip, pickle
 import msprime
 from collections import Counter
 from time import time
@@ -100,17 +99,11 @@ def main(job_no, pop_size, mutation_rate, length, growth_rate, n, num_replicates
     sfs_array = np.array(sfs_array)
 
     rel_branch_length_array = np.array(rel_branch_length_array)
+    mean_rel_branch_lengths = np.mean(rel_branch_length_array, axis=0)
     seg_sites = np.sum(sfs_array, axis=1)
     seg_site_mean = np.mean(seg_sites)
     seg_site_sd = np.std(seg_sites)
-    mean_rel_branch_lengths =  np.mean(rel_branch_length_array, axis=0)
-    results = [mean_rel_branch_lengths, seg_site_mean, seg_site_sd]
-    filename = 'data/simulation_means_' + job_no + '.pklz'
-    with gzip.open(filename, 'wb') as outfile:
-        pickle.dump(results, outfile)
-    outfile = open(filename, 'r')
-    LOGGER.output_file(outfile.name)
-    outfile.close()
+
     filename = 'data/sfs_' + job_no + '.csv'
     sfs_array = pd.DataFrame(sfs_array)
     sfs_array.to_csv(filename)
@@ -130,7 +123,7 @@ def main(job_no, pop_size, mutation_rate, length, growth_rate, n, num_replicates
     LOGGER.output_file(outfile.name)
     outfile.close()
     LOGGER.log_message(str(mean_rel_branch_lengths), label='Mean relative branch lengths'.ljust(25))
-    #LOGGER.log_message(str(prior), label='Mean of sampled SFSs'.ljust(25))
+    LOGGER.log_message(str(np.mean(sfs_array, axis=0)), label='Mean of sampled SFSs'.ljust(25))
     LOGGER.log_message(str(seg_site_mean), label='Mean of seg. sites '.ljust(25))
     LOGGER.log_message(str(seg_site_sd), label='Std. dev. of seg sites'.ljust(25))
     LOGGER.log_message(str(np.mean(branch_length_array, axis=0)), label='Expected branch lengths'.ljust(25))

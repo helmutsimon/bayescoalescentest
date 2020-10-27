@@ -1,13 +1,11 @@
 # coding=utf-8
 
-
 """
-    This script performs a number of Wright-Fisher simulations, then estimates the branch lengths using both diffuse
-    and Wright-Fisher priors. MSEs are calculated in both cases, as well as tMRCAs.
+    This script performs a number of Wright-Fisher simulations, then estimates the branch lengths using both Dirichlet
+    and multivariate normal priors. MSEs are calculated in both cases, as well as TMRCAs.
 
-    Parameters are job no, (diploid) population size, mutation rate, sequence length, number of trials (simulations),
-    sample size, number of MCMC draws (-dr optional), directory for logs and data (-d optional),
-    number of parallel jobs (-j optional).
+    Parameters are job no, mutation rate, sequence length, number of trials (simulations),
+    number of MCMC draws (-dr optional) and directory for logs and data (-d optional).
 
     A sample run statement is:
 
@@ -44,8 +42,7 @@ LOGGER = CachingLogger(create_dir=True)
 @click.option('-dr', '--draws', default=100000, help='Number of MCMC samples.')
 @click.option('-d', '--dirx', default='data', type=click.Path(),
               help='Directory name for data and log files. Default is data')
-@click.option('-j', '--n_jobs', default=5, type=int, help='Number of parallel jobs.')
-def main(job_no, mutation_rate, length, size, draws, dirx, n_jobs):
+def main(job_no, mutation_rate, length, size, draws, dirx):
     start_time = time()
     if not os.path.exists(dirx):
         os.makedirs(dirx)
@@ -80,15 +77,6 @@ def main(job_no, mutation_rate, length, size, draws, dirx, n_jobs):
     LOGGER.input_file(infile.name)
     infile.close()
 
-    filename = 'simulation_means_' + job_no + '.pklz'
-    file_path = dirx + '/' + filename
-    with gzip.open(file_path, 'rb') as results:
-        results = pickle.load(results)
-    infile = open(file_path, 'r')
-    LOGGER.input_file(infile.name)
-    infile.close()
-    mean_rel_branch_lengths, Sn_exp, sdSn = results[:3]
-
     filename = dirx + '/sfs_' + job_no + '.csv'
     sfs_array = pd.read_csv(filename, index_col=0)
     sfs_array = np.array(sfs_array)
@@ -99,15 +87,16 @@ def main(job_no, mutation_rate, length, size, draws, dirx, n_jobs):
 
     filename = dirx + '/brlens_' + job_no + '.csv'
     branch_length_array = pd.read_csv(filename, index_col=0)
-    branch_length_array = np.array(branch_length_array)
     infile = open(filename, 'r')
     LOGGER.input_file(infile.name)
     infile.close()
+    branch_length_array = np.array(branch_length_array)
+    ttl_array = branch_length_array.dot(np.arange(2, n + 1).T)
+    ttl_mu = np.mean(ttl_array)
+    ttl_sigma = np.std(ttl_array)
 
     seq_mutation_rate = mutation_rate * length
     sd_mutation_rate = seq_mutation_rate * 1e-6
-    alpha = (Sn_exp / sdSn) ** 2
-    beta = alpha * seq_mutation_rate / Sn_exp
     j_n_inv = np.diag(np.arange(2, n + 1))
     simplex_variates = j_n_inv.dot(rbl_variates.T).T
     stick_bv = run_MCMC.StickBreaking_bv()
@@ -128,7 +117,7 @@ def main(job_no, mutation_rate, length, size, draws, dirx, n_jobs):
         print('\nEst. branch lengths Dirichlet prior = '.ljust(25), bmd)
 
         mcmc_model, trace = run_MCMC.run_MCMC_mvn(sfs, seq_mutation_rate, sd_mutation_rate, mx_details,
-                                            mu, sigma, alpha, beta, draws=draws)
+                                            mu, sigma, ttl_mu, ttl_sigma, draws=draws)
         branch_vars = run_MCMC.multiply_variates(trace, 'mvn_sample')
         bmw = np.mean(branch_vars, axis=1)
         tmrca_w = np.sum(bmw)

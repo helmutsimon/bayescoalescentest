@@ -102,7 +102,7 @@ class StickBreaking_bv(Transform):
 stick_bv = StickBreaking_bv()
 
 
-def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, alpha, beta, draws=50000, progressbar=False):
+def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, ttl_mu, ttl_sigma, draws=50000, progressbar=False):
     """
     Define and run MCMC model for coalescent tree branch lengths using multivariate normal prior..
 
@@ -125,7 +125,7 @@ def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, alpha, b
         conditional_probs = tt.dot(jmx, simplex_sample.T)
         sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=conditional_probs, observed=sfs)
 
-        total_length1 = Gamma('total_length', alpha=alpha, beta=beta)
+        total_length1 = Gamma('total_length', mu=ttl_mu, sigma=ttl_sigma)
         assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
         mut_rate = Beta('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
         total_length = total_length1 * mut_rate
