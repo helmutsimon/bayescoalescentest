@@ -5,14 +5,21 @@ This file contains MCMC and associated routines for Bayesian inference of coales
 
 """
 
-from pymc3 import *
-from pymc3.distributions.multivariate import Multinomial, Dirichlet
-from pymc3.distributions.discrete import Categorical
+from pymc3.distributions.multivariate import Multinomial, MvNormal, Dirichlet
+from pymc3.distributions.discrete import Categorical, Poisson
+from pymc3.distributions.continuous import Gamma, Beta
+from pymc3 import summary
+#from pymc3.distributions.transforms import StickBreaking
+from pymc3.model  import Model
+from pymc3.sampling import sample
+from pymc3.step_methods.metropolis import Metropolis
+from pymc3.distributions.transforms import Transform
+from pymc3.theanof import floatX
+import theano
+import theano.tensor as tt
 import numpy as np
 from bisect import bisect
 from scipy.special import binom
-import theano
-import theano.tensor as tt
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
@@ -26,16 +33,7 @@ def get_ERM_matrix(n):
     return ERM_matrix
 
 
-def run_MCMC(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, prior=None, alpha=None, beta=None, progressbar=False):
-    """
-    Define and run MCMC model for coalescent tree branch lengths.
-
-    """
-
-    n = len(sfs) + 1
-    if prior is None:
-        prior = np.ones(n - 1)
-    assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
+def get_tree_details(n, sfs, mx_details):
     tree_matrices = mx_details[0][n]
     tree_matrices = [m.T for m in tree_matrices]
     tree_probabilities = mx_details[1][n]
@@ -59,14 +57,102 @@ def run_MCMC(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, prior=None
         tree_matrices = [tree_matrices[indices[0]], tree_matrices[indices[0]]]
         tree_matrices = np.array(tree_matrices)
         tree_probabilities = np.array([0.5, 0.5])
+    return tree_matrices, tree_probabilities
+
+
+class StickBreaking_bv(Transform):
+    """
+    Transforms K - 1 dimensional simplex space (k values in [0,1] and that sum to 1) to a K - 1 vector of real values.
+    This is a variant of the isometric logratio transformation:
+    Adapted from PyMC3 StickBreaking transform, with inclusion of backward_val.
+    """
+
+    name = "stick_bv"
+
+    def forward(self, x_):
+        x = x_.T
+        n = x.shape[0]
+        lx = tt.log(x)
+        shift = tt.sum(lx, 0, keepdims=True) / n
+        y = lx[:-1] - shift
+        return floatX(y.T)
+
+    def forward_val(self, x_, point=None):
+        x = x_.T
+        n = x.shape[0]
+        lx = np.log(x)
+        shift = np.sum(lx, 0, keepdims=True) / n
+        y = lx[:-1] - shift
+        return floatX(y.T)
+
+    def backward(self, y_):
+        y = y_.T
+        y = tt.concatenate([y, -tt.sum(y, 0, keepdims=True)])
+        e_y = tt.exp(y - tt.max(y, 0, keepdims=True))
+        x = e_y / tt.sum(e_y, 0, keepdims=True)
+        return floatX(x.T)
+
+    def backward_val(self, y_):
+        y = y_.T
+        y = np.concatenate([y, -np.sum(y, 0, keepdims=True)])
+        e_y = np.exp(y - np.max(y, 0, keepdims=True))
+        x = e_y / np.sum(e_y, 0, keepdims=True)
+        return floatX(x.T)
+
+stick_bv = StickBreaking_bv()
+
+
+def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, alpha, beta, draws=50000, progressbar=False):
+    """
+    Define and run MCMC model for coalescent tree branch lengths using multivariate normal prior..
+
+    """
+
+    n = len(sfs) + 1
     j_n = np.diag(1 / np.arange(2, n + 1))
+    tree_matrices, tree_probabilities = get_tree_details(n, sfs, mx_details)
     sfs = np.array(sfs)
     seg_sites = sum(sfs)
 
     with Model() as combined_model:
-        # Note that upgraded version of pymc3 is required, otherwise pyMC3.Multinomial will not handle cases
-        #  where probability =0 and corresponding data count=0 also.
 
+        tree_index = Categorical('tree_index', tree_probabilities)
+        tree_matrices = theano.shared(tree_matrices)
+        jmx = tree_matrices[tree_index].dot(j_n)
+
+        mvn_sample = MvNormal('mvn_sample', mu=mu, cov=sigma, shape=(n - 2))
+        simplex_sample = stick_bv.backward(mvn_sample)
+        conditional_probs = tt.dot(jmx, simplex_sample.T)
+        sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=conditional_probs, observed=sfs)
+
+        total_length1 = Gamma('total_length', alpha=alpha, beta=beta)
+        assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
+        mut_rate = Beta('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
+        total_length = total_length1 * mut_rate
+        seg_sites_obs = Poisson('seg_sites_obs', mu=total_length, observed=seg_sites)
+
+    with combined_model:
+        step = Metropolis(
+            [mvn_sample, mut_rate, total_length])
+        tune = int(draws / 5)
+        trace = sample(draws, tune=tune, step=step, progressbar=progressbar)
+    print(summary(trace))
+    return combined_model, trace
+
+
+def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, progressbar=False):
+    """
+    Define and run MCMC model for coalescent tree branch lengths using flat Dirichlet prior.
+    """
+
+    n = len(sfs) + 1
+    prior = np.ones(n - 1)
+    j_n = np.diag(1 / np.arange(2, n + 1))
+    tree_matrices, tree_probabilities = get_tree_details(n, sfs, mx_details)
+    sfs = np.array(sfs)
+    seg_sites = sum(sfs)
+
+    with Model() as combined_model:
         tree_index = Categorical('tree_index', tree_probabilities)
         tree_matrices = theano.shared(tree_matrices)
         jmx = tree_matrices[tree_index].dot(j_n)
@@ -75,28 +161,33 @@ def run_MCMC(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, prior=None
         conditional_probs = tt.dot(jmx, probs.T)
         sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=conditional_probs, observed=sfs)
 
-        total_length1 = Gamma('total_length', alpha=alpha, beta=beta)
+        total_length1 = Gamma('total_length', alpha=1, beta=1e-10)
+        assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
         mut_rate = Beta('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
         total_length = total_length1 * mut_rate
         seg_sites_obs = Poisson('seg_sites_obs', mu=total_length, observed=seg_sites)
 
     with combined_model:
         step = Metropolis(
-            [probs, mut_rate, total_length])  # May require njobs=1 if not using pymc-devs:master. See issue #3011.
+            [probs, mut_rate, total_length])
         tune = int(draws / 5)
         trace = sample(draws, tune=tune, step=step, progressbar=progressbar)
     print(summary(trace))
     return combined_model, trace
 
 
-def multiply_variates(trace):
+def multiply_variates(trace, variable_name):
     """
-    Multiply variates for relative branch length and total tree .ength to obtain variates for absolute branch length.
+    Multiply variates for relative branch length and total tree length to obtain variates for absolute
+    branch length.
+    variable_name is 'mvn_sample' for multivariate normal prior, 'probs' for flat Dirichlet prior.
 
     """
 
-    vars_rel = [t['probs'] for t in trace]
+    vars_rel = [t[variable_name] for t in trace]
     vars_rel = np.array(vars_rel)
+    if variable_name == 'mvn_sample':
+        vars_rel = stick_bv.backward_val(vars_rel)
     size = vars_rel.shape[0]
     n0 = vars_rel.shape[1]
     j_n = np.diag(1 / np.arange(2, n0 + 2))

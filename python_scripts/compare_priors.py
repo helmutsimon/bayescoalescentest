@@ -20,7 +20,8 @@ import numpy as np
 import pandas as pd
 import os, sys
 import gzip, pickle
-import msprime
+import pymc3
+import theano
 from time import time
 import click
 from scitrack import CachingLogger, get_file_hexdigest
@@ -30,7 +31,7 @@ abspath = os.path.abspath(__file__)
 projdir = "/".join(abspath.split("/")[:-2])
 sys.path.append(projdir)
 
-from shared import msprime_functions, run_MCMC
+from shared import run_MCMC
 
 LOGGER = CachingLogger(create_dir=True)
 
@@ -51,9 +52,17 @@ def main(job_no, mutation_rate, length, size, draws, dirx, n_jobs):
     LOGGER.log_file_path = dirx + "/" + str(os.path.basename(__file__)) + '_' + job_no + ".log"
     LOGGER.log_args()
     LOGGER.log_message(get_file_hexdigest(__file__), label="Script md5sum".ljust(25))
-    LOGGER.log_message('Name = ' + msprime.__name__ + ', version = ' + msprime.__version__,
+    try:
+        LOGGER.log_message(str(os.environ['CONDA_DEFAULT_ENV']), label="Conda environment.".ljust(17))
+    except KeyError:
+        pass
+    LOGGER.log_message('Name = ' + np.__name__ + ', version = ' + np.__version__,
                        label="Imported module".ljust(25))
     LOGGER.log_message('Name = ' + pd.__name__ + ', version = ' + pd.__version__,
+                       label="Imported module".ljust(25))
+    LOGGER.log_message('Name = ' + pymc3.__name__ + ', version = ' + pymc3.__version__,
+                       label="Imported module".ljust(25))
+    LOGGER.log_message('Name = ' + theano.__name__ + ', version = ' + theano.__version__,
                        label="Imported module".ljust(25))
     length = int(length)
     mfilename = dirx + '/matrix_details_5-12.pklz'
@@ -63,20 +72,24 @@ def main(job_no, mutation_rate, length, size, draws, dirx, n_jobs):
     LOGGER.input_file(infile.name)
     infile.close()
 
-    filename = 'tree_simulations_' + job_no
+    filename = 'relbrlens_' + job_no + '.csv'
+    file_path = dirx + '/' + filename
+    rbl_variates = pd.read_csv(file_path, index_col=0)
+    rbl_variates = np.array(rbl_variates)
+    infile = open(file_path, 'r')
+    LOGGER.input_file(infile.name)
+    infile.close()
+
+    filename = 'simulation_means_' + job_no + '.pklz'
     file_path = dirx + '/' + filename
     with gzip.open(file_path, 'rb') as results:
         results = pickle.load(results)
     infile = open(file_path, 'r')
     LOGGER.input_file(infile.name)
     infile.close()
-    sfs_, true_branch_lengths_, mean_branch_lengths, mu, sd = results[:5]
-    rel_branch_lengths = mean_branch_lengths / np.sum(mean_branch_lengths)
-    n = len(sfs_) + 1
-    j_n_inv = np.diag(np.arange(2, n + 1))
-    eprior = j_n_inv.dot(rel_branch_lengths)
+    mean_rel_branch_lengths, Sn_exp, sdSn = results[:3]
 
-    filename = dirx + '/sfs_' + job_no
+    filename = dirx + '/sfs_' + job_no + '.csv'
     sfs_array = pd.read_csv(filename, index_col=0)
     sfs_array = np.array(sfs_array)
     infile = open(filename, 'r')
@@ -84,7 +97,7 @@ def main(job_no, mutation_rate, length, size, draws, dirx, n_jobs):
     infile.close()
     n = sfs_array.shape[1] + 1
 
-    filename = dirx + '/brlens_' + job_no
+    filename = dirx + '/brlens_' + job_no + '.csv'
     branch_length_array = pd.read_csv(filename, index_col=0)
     branch_length_array = np.array(branch_length_array)
     infile = open(filename, 'r')
@@ -93,35 +106,38 @@ def main(job_no, mutation_rate, length, size, draws, dirx, n_jobs):
 
     seq_mutation_rate = mutation_rate * length
     sd_mutation_rate = seq_mutation_rate * 1e-6
+    alpha = (Sn_exp / sdSn) ** 2
+    beta = alpha * seq_mutation_rate / Sn_exp
+    j_n_inv = np.diag(np.arange(2, n + 1))
+    simplex_variates = j_n_inv.dot(rbl_variates.T).T
+    stick_bv = run_MCMC.StickBreaking_bv()
+    transf_variates = stick_bv.forward_val(simplex_variates)
+    mu = np.mean(transf_variates, axis=0)
+    sigma = np.cov(transf_variates, rowvar=False)
     np.set_printoptions(precision=3)
     n_seq = np.arange(1, n)
     results = list()
     for sfs, brlens, i in zip(sfs_array, branch_length_array, range(size)):
+        print('\nTrue branch lengths = '.ljust(25), brlens)
         tmrca_true = np.sum(brlens)
-        uprior = np.ones(n - 1)
-        alpha = 1
-        beta = 1e-10
-        mcmc_model, trace = run_MCMC.run_MCMC(sfs, seq_mutation_rate, sd_mutation_rate, mx_details,
-                                              draws=draws, prior=uprior, alpha=alpha, beta=beta)
-        branch_vars = run_MCMC.multiply_variates(trace)
+        mcmc_model, trace = run_MCMC.run_MCMC_Dirichlet(sfs, seq_mutation_rate, sd_mutation_rate, mx_details, draws=draws)
+        branch_vars = run_MCMC.multiply_variates(trace, 'probs')
         bmd = np.mean(branch_vars, axis=1)
         tmrca_d = np.sum(bmd)
         mse_d = np.sqrt(np.linalg.norm(bmd - brlens))
-        print('\nEst. branch lengths diffuse prior = '.ljust(25), bmd)
+        print('\nEst. branch lengths Dirichlet prior = '.ljust(25), bmd)
 
-        alpha = (mu / sd) ** 2
-        beta = alpha * seq_mutation_rate / mu
-        mcmc_model, trace = run_MCMC.run_MCMC(sfs, seq_mutation_rate, sd_mutation_rate, mx_details,
-                                              draws=draws, prior=eprior, alpha=alpha, beta=beta)
-        branch_vars = run_MCMC.multiply_variates(trace)
+        mcmc_model, trace = run_MCMC.run_MCMC_mvn(sfs, seq_mutation_rate, sd_mutation_rate, mx_details,
+                                            mu, sigma, alpha, beta, draws=draws)
+        branch_vars = run_MCMC.multiply_variates(trace, 'mvn_sample')
         bmw = np.mean(branch_vars, axis=1)
         tmrca_w = np.sum(bmw)
         mse_w = np.sqrt(np.linalg.norm(bmw - brlens))
-        print('\nEst. branch lengths demographic prior = '.ljust(25), bmw)
+        print('\nEst. branch lengths mv-normal prior = '.ljust(25), bmw)
         thom = np.sum(sfs * n_seq) / (n * length * mutation_rate)
         row = [np.sum(sfs), mse_d, mse_w, tmrca_true, tmrca_d, tmrca_w, thom]
         results.append(row)
-    columns =['S_n', 'mse_diff', 'mse_dem', 'tmrca_true', 'tmrca_diff', 'tmrca_dem', 'thom']
+    columns =['S_n', 'mse_Dir', 'mse_mvn', 'tmrca_true', 'tmrca_Dir', 'tmrca_mvn', 'thom']
     result = pd.DataFrame(results, columns=columns)
     fname = dirx + '/compare_priors_result_' + job_no + '.csv'
     result.to_csv(fname, sep=',')
