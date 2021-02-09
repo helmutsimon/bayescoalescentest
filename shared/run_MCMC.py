@@ -5,25 +5,39 @@ This file contains MCMC and associated routines for Bayesian inference of coales
 
 """
 
+import os, sys
 from pymc3.distributions.multivariate import Multinomial, MvNormal, Dirichlet
 from pymc3.distributions.discrete import Categorical, Poisson
 from pymc3.distributions.continuous import Gamma, Beta
-from pymc3 import summary
-#from pymc3.distributions.transforms import StickBreaking
-from pymc3.model  import Model
+from pymc3 import *
+from pymc3.model import Model
 from pymc3.sampling import sample
 from pymc3.step_methods.metropolis import Metropolis
 from pymc3.distributions.transforms import Transform
+from pymc3.step_methods.arraystep import ArrayStep , metrop_select
+import pymc3 as pm
+from pymc3 import CategoricalGibbsMetropolis
+import arviz
+from arviz import summary
+from pymc3.step_methods.metropolis import sample_except
 from pymc3.theanof import floatX
 import theano
+from theano import config
 import theano.tensor as tt
+from theano.compile.ops import as_op
 import numpy as np
 from bisect import bisect
-from scipy.special import binom
+from scipy.special import binom, factorial, gammaln
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import seaborn as sns
 
+
+abspath = os.path.abspath(__file__)
+projdir = "/".join(abspath.split("/")[:-1])
+sys.path.append(projdir)
+
+import tree_matrix_computation
 
 def get_ERM_matrix(n):
     ERM_matrix = np.zeros((n - 1, n - 1))
@@ -170,6 +184,167 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, mx_details, draws=50000, 
     with combined_model:
         step = Metropolis(
             [probs, mut_rate, total_length])
+        tune = int(draws / 5)
+        trace = sample(draws, tune=tune, step=step, progressbar=progressbar)
+    print(summary(trace))
+    return combined_model, trace
+
+
+class CategoricalGibbsMetropolisX(ArrayStep):
+    """A modification of the pymc3 CategoricalGibbsMetropolis step method allowing use of the CategoricalFactorial
+    distribution.
+    """
+    name = "categorical_gibbs_metropolis"
+
+    def __init__(self, vars, proposal="uniform", order="random", model=None):
+
+        model = pm.modelcontext(model)
+        vars = pm.inputvars(vars)
+
+        dimcats = []
+
+        for v in vars:
+            distr = getattr(v.distribution, "parent_dist", v.distribution)
+            k = factorial(distr.k - 1, exact=True)  # Categorical distribution has (k-1)! categories
+            start = len(dimcats)
+            dimcats += [(dim, k) for dim in range(start, start + v.dsize)]
+
+        if order == "random":
+            self.shuffle_dims = True
+            self.dimcats = dimcats
+        else:
+            if sorted(order) != list(range(len(dimcats))):
+                raise ValueError("Argument 'order' has to be a permutation")
+            self.shuffle_dims = False
+            self.dimcats = [dimcats[j] for j in order]
+
+        if proposal == "uniform":
+            self.astep = self.astep_unif
+        else:
+            raise ValueError("Argument 'proposal' should be 'uniform'")
+
+        super().__init__(vars, [model.fastlogp])
+
+    astep_unif = CategoricalGibbsMetropolis.astep_unif
+    astep_prop = CategoricalGibbsMetropolis.astep_prop
+    metropolis_proportional = CategoricalGibbsMetropolis.metropolis_proportional
+
+
+class CategoricalFactorial(Discrete):
+    """A uniform dicrete (categorical) distribution on (k-1)! values."""
+
+    def __init__(self, k, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.k = k
+        self.factk = factorial(k - 1, exact=True)
+        self.log_p = -gammaln(k)
+
+    def random(self, point=None, size=None):
+        k = self.k
+        factk = self.factk
+        return np.random.choice(factk)
+
+    def logp(self, value):
+        return self.log_p
+
+
+def run_MCMC_Dirichlet_ordered(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=False):
+    """
+    Define and run MCMC model for coalescent tree branch lengths using flat Dirichlet prior.
+    Matrices are sampled by sampling unordered partitions, allowing sample sizes up to 20.
+    """
+
+    config.compute_test_value = 'raise'
+    n = len(sfs) + 1
+    prior = np.ones(n - 1)
+    j_n = np.diag(1 / np.arange(2, n + 1, dtype=np.float32))
+    sfs = np.array(sfs)
+    sfs = tt.as_tensor(sfs)
+    seg_sites = sum(sfs)
+
+    def infer_matrix_shape(node, input_shapes):
+        return [(n - 1, n - 1)]
+
+    @as_op(itypes=[tt.lscalar], otypes=[tt.fmatrix], infer_shape=infer_matrix_shape)
+    def jmatrix(i):
+        """Return tree matrix for given integer"""
+        f = tree_matrix_computation.factorize(i, n)
+        mx = tree_matrix_computation.derive_tree_matrix(f)
+        mx = np.reshape(mx, (n - 1, n - 1))
+        mx = np.transpose(mx)
+        jmx = mx @ j_n
+        jmx = jmx.astype('float32')
+        return jmx
+
+    with Model() as combined_model:
+        ordered_tree_ix = CategoricalFactorial('ordered_tree_ix', n, dtype='int64', testval=0)
+        jmx = jmatrix(ordered_tree_ix)
+
+        probs = Dirichlet('probs', prior)
+        conditional_probs = tt.dot(jmx, probs.T)
+        sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=conditional_probs, observed=sfs)
+
+        total_length1 = Gamma('total_length', alpha=1, beta=1e-10)
+        assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
+        mut_rate = Beta('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
+        total_length = total_length1 * mut_rate
+        seg_sites_obs = Poisson('seg_sites_obs', mu=total_length, observed=seg_sites)
+
+    with combined_model:
+        step = [Metropolis([probs, mut_rate, total_length]), \
+                CategoricalGibbsMetropolisX([ordered_tree_ix])]
+        tune = int(draws / 5)
+        trace = sample(draws, tune=tune, step=step, progressbar=progressbar)
+    print(summary(trace))
+    return combined_model, trace
+
+
+def run_MCMC_mvn_ordered(sfs, seq_mut_rate, sd_mut_rate, mu, sigma, ttl_mu, ttl_sigma, draws=50000, progressbar=False):
+    """
+    Define and run MCMC model for coalescent tree branch lengths using flat Dirichlet prior.
+    Matrices are sampled by sampling unordered partitions, allowing sample sizes up to 20.
+    """
+
+    config.compute_test_value = 'raise'
+    n = len(sfs) + 1
+    prior = np.ones(n - 1)
+    j_n = np.diag(1 / np.arange(2, n + 1, dtype=np.float32))
+    sfs = np.array(sfs)
+    sfs = tt.as_tensor(sfs)
+    seg_sites = sum(sfs)
+
+    def infer_matrix_shape(node, input_shapes):
+        return [(n - 1, n - 1)]
+
+    @as_op(itypes=[tt.lscalar], otypes=[tt.fmatrix], infer_shape=infer_matrix_shape)
+    def jmatrix(i):
+        """Return tree matrix for given integer"""
+        f = tree_matrix_computation.factorize(i, n)
+        mx = tree_matrix_computation.derive_tree_matrix(f)
+        mx = np.reshape(mx, (n - 1, n - 1))
+        mx = np.transpose(mx)
+        jmx = mx @ j_n
+        jmx = jmx.astype('float32')
+        return jmx
+
+    with Model() as combined_model:
+        ordered_tree_ix = CategoricalFactorial('ordered_tree_ix', n, dtype='int64', testval=0)
+        jmx = jmatrix(ordered_tree_ix)
+
+        mvn_sample = MvNormal('mvn_sample', mu=mu, cov=sigma, shape=(n - 2))
+        simplex_sample = stick_bv.backward(mvn_sample)
+        conditional_probs = tt.dot(jmx, simplex_sample.T)
+        sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=conditional_probs, observed=sfs)
+
+        total_length1 = Gamma('total_length', alpha=1, beta=1e-10)
+        assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
+        mut_rate = Beta('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
+        total_length = total_length1 * mut_rate
+        seg_sites_obs = Poisson('seg_sites_obs', mu=total_length, observed=seg_sites)
+
+    with combined_model:
+        step = [Metropolis([mvn_sample, mut_rate, total_length]),
+                CategoricalGibbsMetropolisX([ordered_tree_ix])]
         tune = int(draws / 5)
         trace = sample(draws, tune=tune, step=step, progressbar=progressbar)
     print(summary(trace))
