@@ -128,9 +128,13 @@ def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, ord
                        label="Imported module".ljust(30))
     LOGGER.log_message('Name = ' + matplotlib.__name__ + ', version = ' + matplotlib.__version__,
                        label="Imported module".ljust(30))
-    infile = open(csv_name, 'r')
-    LOGGER.input_file(infile.name)
-    infile.close()
+    data_file = open(file_path, 'r')
+    LOGGER.input_file(data_file.name)
+    data_file.close()
+    summary_file = open(csv_name, 'r')
+    LOGGER.output_file(summary_file.name)
+    summary_file.close()
+
     if simuljobno:
         filename = dirx + '/relbrlens_' + simuljobno + '.csv'
         infile = open(filename, 'r')
