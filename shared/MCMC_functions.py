@@ -100,7 +100,7 @@ def Lehmer_distribution(n):
     return permutation
 
 
-def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=False):
+def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=False, order="random"):
     """Define and run MCMC model for coalescent tree branch lengths using uniform (Dirichlet) prior."""
     config.compute_test_value = 'raise'
     n = len(sfs) + 1
@@ -110,6 +110,13 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
     sfs = tt.as_tensor(sfs)
     seg_sites = sum(sfs)
     ttl_est = (seg_sites + 1) / seq_mut_rate
+    if order == "inc":
+        order = np.arange(n - 2)
+    elif order == "dec":
+        order = np.arange(n - 2)
+        order = np.flip(order)
+    else:
+        order = "random"
 
     def infer_matrix_shape(fgraph, node, input_shapes):
         return [(n - 1, n - 1)]
@@ -142,7 +149,7 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
 
     with combined_model:
         step1 = Metropolis([probs, mut_rate, total_length])
-        step2 = CategoricalGibbsMetropolis(permutation)
+        step2 = CategoricalGibbsMetropolis(permutation, order=order)
         tune = int(draws / 5)
         start = {'total_length': ttl_est.eval()}
         trace = sample(draws, tune=tune, step=[step1, step2], \
@@ -150,7 +157,8 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
     return combined_model, trace
 
 
-def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, ttl_mu, ttl_sigma, draws=50000, progressbar=False):
+def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, ttl_mu, ttl_sigma, draws=50000,
+                 progressbar=False, order="random"):
     """Define and run MCMC model for coalescent tree branch lengths using a multivariate normal prior."""
     config.compute_test_value = 'raise'
     n = len(sfs) + 1
@@ -158,6 +166,13 @@ def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, ttl_mu, 
     sfs = np.array(sfs)
     sfs = tt.as_tensor(sfs)
     seg_sites = sum(sfs)
+    if order == "inc":
+        order = np.arange(n - 2)
+    elif order == "dec":
+        order = np.arange(n - 2)
+        order = np.flip(order)
+    else:
+        order = "random"
 
     def infer_matrix_shape(fgraph, node, input_shapes):
         return [(n - 1, n - 1)]
@@ -191,7 +206,7 @@ def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, ttl_mu, 
 
     with combined_model:
         step1 = Metropolis([mvn_sample, mut_rate, total_length])
-        step2 = CategoricalGibbsMetropolis(permutation)
+        step2 = CategoricalGibbsMetropolis(permutation, order=order)
         tune = int(draws / 5)
         trace = sample(draws, tune=tune, step=[step1, step2], progressbar=progressbar, return_inferencedata=False)
     return combined_model, trace
