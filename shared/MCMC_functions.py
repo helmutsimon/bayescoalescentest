@@ -3,6 +3,9 @@
 """
 This file contains MCMC and associated routines for Bayesian inference of coalescence times.
 
+Notes:
+    1. Multiprocessing does not work on all systems. Ubuntu 18.04.5 yes, MacOS no.
+
 """
 
 from pymc3.distributions.multivariate import Multinomial, MvNormal, Dirichlet
@@ -51,7 +54,7 @@ def make_row(s):
 
 def derive_tree_matrix(f):
     """Derive tree matrix from the list f. The first element of f is an integer in [0, n-2], the second
-    in [0, n-3] and so on until [0, 1]."""
+    in [0, n-3] and so on until [0, 1] i.e. Lehmer code."""
     n = len(f) + 2
     s = '0' * (n - 1)
     result = list()
@@ -100,7 +103,7 @@ def Lehmer_distribution(n):
     return permutation
 
 
-def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=False, order="random"):
+def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=False, order="random", cores=None):
     """Define and run MCMC model for coalescent tree branch lengths using uniform (Dirichlet) prior."""
     config.compute_test_value = 'raise'
     n = len(sfs) + 1
@@ -152,13 +155,13 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
         step2 = CategoricalGibbsMetropolis(permutation, order=order)
         tune = int(draws / 5)
         start = {'total_length': ttl_est.eval()}
-        trace = sample(draws, tune=tune, step=[step1, step2], \
-                       progressbar=progressbar, return_inferencedata=False, start=start)
+        trace = sample(draws, tune=tune, step=[step1, step2],
+                       progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
     return combined_model, trace
 
 
 def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, ttl_mu, ttl_sigma, draws=50000,
-                 progressbar=False, order="random"):
+                 progressbar=False, order="random", cores=None):
     """Define and run MCMC model for coalescent tree branch lengths using a multivariate normal prior."""
     config.compute_test_value = 'raise'
     n = len(sfs) + 1
@@ -208,7 +211,8 @@ def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, ttl_mu, 
         step1 = Metropolis([mvn_sample, mut_rate, total_length])
         step2 = CategoricalGibbsMetropolis(permutation, order=order)
         tune = int(draws / 5)
-        trace = sample(draws, tune=tune, step=[step1, step2], progressbar=progressbar, return_inferencedata=False)
+        trace = sample(draws, tune=tune, step=[step1, step2], progressbar=progressbar,
+                       cores=cores, return_inferencedata=False)
     return combined_model, trace
 
 
