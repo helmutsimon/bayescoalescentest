@@ -17,8 +17,8 @@ import os, sys
 from time import time
 import click
 import pymc3
-#import arviz
-#from arviz import summary, plot_trace
+import arviz
+from arviz import summary, plot_trace
 from pymc3.backends import tracetab
 import theano
 from scitrack import CachingLogger, get_file_hexdigest
@@ -93,10 +93,10 @@ def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, dir
         variable_name = 'probs'
         print('Mean and sd of mut_rate;'.ljust(25), seq_mut_rate, sd_mut_rate)
         model, trace = MCMC_functions.run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws)
-    #summaryx = summary(trace)
-    #print('\n', summaryx)
-    #csv_name = dirx + '/pm_summary_' + job_no + '.csv'
-    #summaryx.to_csv(csv_name, sep=',')
+    summaryx = summary(trace)
+    print('\n', summaryx)
+    csv_name = dirx + '/pm_summary_' + job_no + '.csv'
+    summaryx.to_csv(csv_name, sep=',')
     trace_df = tracetab.trace_to_dataframe(trace, include_transformed=True)
     trace_df.to_csv(dirx + '/pm_trace_' + job_no + '.csv')
     mut_rate_vars = [t['mut_rate'] for t in trace]
@@ -146,7 +146,7 @@ def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, dir
 
     matplotlib.logging.getLogger('matplotlib').setLevel('ERROR')
     matplotlib.logging.getLogger('matplotlib.font_manager').disabled = True
-    #tp = plot_trace(trace)
+    tp = plot_trace(trace)
 
     try:
         fig = plt.gcf()
