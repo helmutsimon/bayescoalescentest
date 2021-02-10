@@ -50,6 +50,8 @@ def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, ord
     if not os.path.exists(dirx):
         os.makedirs(dirx)
     draws = int(draws)
+    if cores is not None:
+        cores = int(cores)
     seq_mut_rate = mutation_rate * length
     sd_mut_rate = seq_mut_rate * cv_mut
     file_path = dirx + '/' + filename
