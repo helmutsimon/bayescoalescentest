@@ -42,8 +42,9 @@ LOGGER = CachingLogger(create_dir=True)
 @click.option('-f', '--simuljobno', default=None, help='File of relative branch lengths for multivariate prior.')
 @click.option('-c', '--cv_mut', type=float, default=1e-6, help='Coefficient of variation of sequence mutation rate.')
 @click.option('-d', '--draws', type=float, default=50000)
+@click.option('-o', '--order', default="random")
 @click.option('-dir', '--dirx', default='data', help='Directory for data and log files. Default is data')
-def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, dirx):
+def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, order, dirx):
     start_time = time()
     if not os.path.exists(dirx):
         os.makedirs(dirx)
@@ -87,12 +88,12 @@ def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, dir
         ttl_mu = np.mean(ttl_array)
         ttl_sigma = np.std(ttl_array)
         model, trace = MCMC_functions.run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mu, sigma,
-                                                         ttl_mu, ttl_sigma, draws)
+                                                         ttl_mu, ttl_sigma, draws, order=order)
     else:
         print('Uninformative Dirichlet prior assumed')
         variable_name = 'probs'
         print('Mean and sd of mut_rate;'.ljust(25), seq_mut_rate, sd_mut_rate)
-        model, trace = MCMC_functions.run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws)
+        model, trace = MCMC_functions.run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws, order=order)
     summaryx = summary(trace)
     print('\n', summaryx)
     csv_name = dirx + '/pm_summary_' + job_no + '.csv'
