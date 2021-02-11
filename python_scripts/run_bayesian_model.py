@@ -155,6 +155,7 @@ def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, ord
 
     matplotlib.logging.getLogger('matplotlib').setLevel('ERROR')
     matplotlib.logging.getLogger('matplotlib.font_manager').disabled = True
+    arviz.rcParams['plot.max_subplots'] = 100
     tp = plot_trace(trace)
 
     try:
