@@ -196,7 +196,7 @@ def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, ttl_mu, 
         permutation_tt = tt.as_tensor(permutation)
         jmx = jmatrix(permutation_tt)
 
-        mvn_sample = MvNormal('mvn_sample', mu=mu, cov=sigma, shape=(n - 2))
+        mvn_sample = MvNormal('mvn_sample', mu=mu, cov=sigma, shape=(n - 1))
         simplex_sample = stick_bv.backward(mvn_sample)
         q = tt.dot(jmx, simplex_sample.T)
         sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=q, observed=sfs)
