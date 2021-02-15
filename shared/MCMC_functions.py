@@ -160,7 +160,7 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
     return combined_model, trace
 
 
-def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, ttl_mu, ttl_sigma, draws=50000,
+def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mu, sigma, ttl_mu, ttl_sigma, draws=50000,
                  progressbar=False, order="random", cores=None):
     """Define and run MCMC model for coalescent tree branch lengths using a multivariate normal prior."""
     config.compute_test_value = 'raise'
@@ -196,7 +196,7 @@ def run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mx_details, mu, sigma, ttl_mu, 
         permutation_tt = tt.as_tensor(permutation)
         jmx = jmatrix(permutation_tt)
 
-        mvn_sample = MvNormal('mvn_sample', mu=mu, cov=sigma, shape=(n - 1))
+        mvn_sample = MvNormal('mvn_sample', mu=mu, cov=sigma, shape=(n - 2))
         simplex_sample = stick_bv.backward(mvn_sample)
         q = tt.dot(jmx, simplex_sample.T)
         sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=q, observed=sfs)
