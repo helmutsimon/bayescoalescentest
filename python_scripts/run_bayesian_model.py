@@ -40,12 +40,13 @@ LOGGER = CachingLogger(create_dir=True)
 @click.argument('mutation_rate', type=float)
 @click.argument('length', type=float)
 @click.option('-f', '--simuljobno', default=None, help='File of relative branch lengths for multivariate prior.')
+@click.option('-tu', '--ttl_uninf',is_flag=True, help='Use uninformative prior for total tree length.')
 @click.option('-c', '--cv_mut', type=float, default=1e-6, help='Coefficient of variation of sequence mutation rate.')
 @click.option('-d', '--draws', type=float, default=50000)
 @click.option('-o', '--order', default="random")
 @click.option('-co', '--cores', default=None)
 @click.option('-dir', '--dirx', default='data', help='Directory for data and log files. Default is data')
-def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, order, cores, dirx):
+def main(job_no, filename, mutation_rate, length, simuljobno, ttl_uninf, cv_mut, draws, order, cores, dirx):
     start_time = time()
     if not os.path.exists(dirx):
         os.makedirs(dirx)
@@ -73,7 +74,7 @@ def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, ord
     var_thom = np.sum(sfs * n_seq * n_seq) / (2 * n * seq_mut_rate) ** 2
     print('Thomson std. error = '.ljust(25), '%.1f' % np.sqrt(var_thom), '\n')
     if simuljobno:
-        print('Multivariate-normal prior')
+        print('Model (multivariate-normal) prior for relative branch lengths.')
         variable_name = 'mvn_sample'
         filename = dirx + '/relbrlens_' + simuljobno + '.csv'
         rbl_variates = pd.read_csv(filename, index_col=0)
@@ -85,15 +86,20 @@ def main(job_no, filename, mutation_rate, length, simuljobno, cv_mut, draws, ord
         mu = np.mean(transf_variates, axis=0)
         sigma = np.cov(transf_variates, rowvar=False)
         filename = dirx + '/brlens_' + simuljobno + '.csv'
-        branch_length_array = pd.read_csv(filename, index_col=0)
-        branch_length_array = np.array(branch_length_array)
-        ttl_array = branch_length_array.dot(np.arange(2, n + 1).T)
-        ttl_mu = np.mean(ttl_array)
-        ttl_sigma = np.std(ttl_array)
+        if ttl_uninf:
+            print('Uninformative prior for total tree length.')
+            ttl_mu, ttl_sigma = 1e-10, 1e-10
+        else:
+            print('Model prior for total tree length.')
+            branch_length_array = pd.read_csv(filename, index_col=0)
+            branch_length_array = np.array(branch_length_array)
+            ttl_array = branch_length_array.dot(np.arange(2, n + 1).T)
+            ttl_mu = np.mean(ttl_array)
+            ttl_sigma = np.std(ttl_array)
         model, trace = MCMC_functions.run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mu, sigma,
                                                          ttl_mu, ttl_sigma, draws, order=order, cores=cores)
     else:
-        print('Uninformative Dirichlet prior assumed')
+        print('Uninformative priors for relative branch lengths and total tree lngth.')
         variable_name = 'probs'
         print('Mean and sd of mut_rate;'.ljust(25), seq_mut_rate, sd_mut_rate)
         model, trace = MCMC_functions.run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate,
