@@ -88,7 +88,7 @@ def main(job_no, filename, mutation_rate, length, simuljobno, ttl_uninf, cv_mut,
         filename = dirx + '/brlens_' + simuljobno + '.csv'
         if ttl_uninf:
             print('Uninformative prior for total tree length.')
-            ttl_mu, ttl_sigma = 1e-10, 1e-10
+            ttl_mu, ttl_sigma = 1e10, 1e10
         else:
             print('Model prior for total tree length.')
             branch_length_array = pd.read_csv(filename, index_col=0)
@@ -161,7 +161,7 @@ def main(job_no, filename, mutation_rate, length, simuljobno, ttl_uninf, cv_mut,
 
     matplotlib.logging.getLogger('matplotlib').setLevel('ERROR')
     matplotlib.logging.getLogger('matplotlib.font_manager').disabled = True
-    arviz.rcParams['plot.max_subplots'] = 100
+    arviz.rcParams['plot.max_subplots'] = 200
     tp = plot_trace(trace)
 
     try:
