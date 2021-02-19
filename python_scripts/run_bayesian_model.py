@@ -42,11 +42,13 @@ LOGGER = CachingLogger(create_dir=True)
 @click.option('-f', '--simuljobno', default=None, help='File of relative branch lengths for multivariate prior.')
 @click.option('-tu', '--ttl_uninf',is_flag=True, help='Use uninformative prior for total tree length.')
 @click.option('-c', '--cv_mut', type=float, default=1e-6, help='Coefficient of variation of sequence mutation rate.')
+@click.option('-l', '--lims', nargs=2, type=float, default=None,
+                        help='Limits for uniform distribution on mutation rates')
 @click.option('-d', '--draws', type=float, default=50000)
 @click.option('-o', '--order', default="random")
 @click.option('-co', '--cores', default=None)
 @click.option('-dir', '--dirx', default='data', help='Directory for data and log files. Default is data')
-def main(job_no, filename, mutation_rate, length, simuljobno, ttl_uninf, cv_mut, draws, order, cores, dirx):
+def main(job_no, filename, mutation_rate, length, simuljobno, ttl_uninf, cv_mut, lims, draws, order, cores, dirx):
     start_time = time()
     if not os.path.exists(dirx):
         os.makedirs(dirx)
@@ -96,7 +98,7 @@ def main(job_no, filename, mutation_rate, length, simuljobno, ttl_uninf, cv_mut,
             ttl_array = branch_length_array.dot(np.arange(2, n + 1).T)
             ttl_mu = np.mean(ttl_array)
             ttl_sigma = np.std(ttl_array)
-        model, trace = MCMC_functions.run_MCMC_mvn(sfs, seq_mut_rate, sd_mut_rate, mu, sigma,
+        model, trace = MCMC_functions.run_MCMC_mvn(sfs, lims[0], lims[1], mu, sigma,
                                                          ttl_mu, ttl_sigma, draws, order=order, cores=cores)
     else:
         print('Uninformative priors for relative branch lengths and total tree lngth.')
