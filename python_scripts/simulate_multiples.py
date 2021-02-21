@@ -123,6 +123,8 @@ def main(job_no, pop_size, mutation_rate, length, growth_rate, n, num_replicates
     LOGGER.output_file(outfile.name)
     outfile.close()
     LOGGER.log_message(str(mean_rel_branch_lengths), label='Mean relative branch lengths'.ljust(25))
+    mean_ttl = sum(mean_rel_branch_lengths * (np.arange(2, n + 1)))
+    LOGGER.log_message(str(mean_ttl), label='Mean total tree length'.ljust(25))
     LOGGER.log_message(str(np.mean(sfs_array, axis=0)), label='Mean of sampled SFSs'.ljust(25))
     LOGGER.log_message(str(seg_site_mean), label='Mean of seg. sites '.ljust(25))
     LOGGER.log_message(str(seg_site_sd), label='Std. dev. of seg sites'.ljust(25))
