@@ -202,8 +202,6 @@ def run_MCMC_mvn(sfs, mrate_lower, mrate_upper, mu, sigma, ttl_mu, ttl_sigma, dr
         sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=q, observed=sfs)
 
         total_length = Gamma('total_length', mu=ttl_mu, sigma=ttl_sigma)
-        #assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
-        #mut_rate = Beta('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
         mut_rate = Uniform('mut_rate', lower=mrate_lower, upper=mrate_upper)
         mu = total_length * mut_rate
         seg_sites_obs = Poisson('seg_sites_obs', mu=mu, observed=seg_sites)
