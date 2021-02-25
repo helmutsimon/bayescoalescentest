@@ -38,17 +38,16 @@ LOGGER = CachingLogger(create_dir=True)
 
 @click.command()
 @click.argument('job_no')
+@click.argument('n', nargs=-1, type=int)
 @click.argument('pop_size', type=float)
 @click.argument('mutation_rate', type=float)
 @click.argument('length', type=float)
 @click.argument('growth_rate', type=float)
-@click.argument('n', type=int)
 @click.argument('num_replicates', type=int)
 @click.option('-d', '--dir', default='data', type=click.Path(),
               help='Directory name for data and log files. Default is data')
-@click.option('-j', '--n_jobs', default=5, type=int, help='Number of parallel jobs.')
 @click.option('-e', '--events_file', default=None, help='Name of file containing demographic events')
-def main(job_no, pop_size, mutation_rate, length, growth_rate, n, num_replicates, dir, n_jobs, events_file):
+def main(job_no, pop_size, mutation_rate, length, growth_rate, n, num_replicates, dir, events_file):
     start_time = time()
     if not os.path.exists(dir):
         os.makedirs(dir)
