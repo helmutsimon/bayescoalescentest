@@ -38,7 +38,7 @@ LOGGER = CachingLogger(create_dir=True)
 
 @click.command()
 @click.argument('job_no')
-@click.argument('n', nargs=-1, type=int)
+@click.argument('n', type=int)
 @click.argument('pop_size', type=float)
 @click.argument('mutation_rate', type=float)
 @click.argument('length', type=float)
