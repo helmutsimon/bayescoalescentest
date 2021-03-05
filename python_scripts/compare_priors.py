@@ -56,7 +56,8 @@ def main(job_no, n, pop_size, mutation_rate, length, growth_rate, size, num_repl
     if not os.path.exists(dirx):
         os.makedirs(dirx)
     length = int(length)
-
+    if cores is not None:
+        cores = int(cores)
     pop_size = int(pop_size)
     length = int(length)
     np.set_printoptions(precision=3)
