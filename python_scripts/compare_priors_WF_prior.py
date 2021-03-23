@@ -136,9 +136,7 @@ def main(job_no, n, pop_size, mutation_rate, length, growth_rate, size, num_repl
         variant_array = np.empty(shape, dtype="u1")
         for variant in tree_sequence.variants():
             variant_array[variant.index] = variant.genotypes
-        # print(variant_array)
         occurrences = np.sum(variant_array, axis=1)
-        # print(occurrences)
         sfs = Counter(occurrences)
         sfs = [sfs[i] for i in range(1, n)]
         sfs_array.append(sfs)
@@ -165,22 +163,20 @@ def main(job_no, n, pop_size, mutation_rate, length, growth_rate, size, num_repl
     mrate_lower = seq_mutation_rate - sd_mutation_rate
     mrate_upper = seq_mutation_rate + sd_mutation_rate
     n_seq = np.arange(1, n)
-    results, summaries_Dir, summaries_mvn = list(), list(), list()
+    results, summaries, summaries_mvn = list(), list(), list()
     for sfs, brlens, i in zip(sfs_array, branch_length_array, range(size)):
         print('\nTrue branch lengths = '.ljust(25), brlens)
         tmrca_true = np.sum(brlens)
         mcmc_model, trace = run_MCMC_WF(sfs, mrate_lower, mrate_upper, pop_size, cores=cores, draws=draws)
         summaryx = summary(trace)
-        summaries_Dir.append(summaryx)
+        summaries.append(summaryx)
         branch_vars = [t['brlens'] for t in trace]
         bmd = np.mean(branch_vars, axis=0)
-        tmrca_d = np.sum(bmd)
-        mse_d = np.sqrt(np.linalg.norm(bmd - brlens))
+        tmrca_est = np.sum(bmd)
+        mse = np.sqrt(np.linalg.norm(bmd - brlens))
         print('\nEst. branch lengths = '.ljust(25), bmd)
-
-
         thom = np.sum(sfs * n_seq) / (n * length * mutation_rate)
-        row = [n, np.sum(sfs), mse_d, tmrca_true, tmrca_d, thom]
+        row = [n, np.sum(sfs), mse, tmrca_true, tmrca_est, thom]
         results.append(row)
         print('\nTrue TMRCA = '.ljust(25), np.sum(brlens))
         print('Est. TMRCA = '.ljust(25), np.sum(bmd))
@@ -206,19 +202,13 @@ def main(job_no, n, pop_size, mutation_rate, length, growth_rate, size, num_repl
                        label="Imported module".ljust(25))
     LOGGER.log_message('Name = ' + msprime.__name__ + ', version = ' + msprime.__version__,
                        label="Imported module".ljust(25))
-    summaries_Dir = pd.concat(summaries_Dir, ignore_index=True)
+    summaries = pd.concat(summaries, ignore_index=True)
     csv_name = dirx + '/pm_summaries_Dir_' + job_no + '.csv'
-    summaries_Dir.to_csv(csv_name, sep=',')
+    summaries.to_csv(csv_name, sep=',')
     summary_file = open(csv_name, 'r')
     LOGGER.output_file(summary_file.name)
     summary_file.close()
-    summaries_mvn = pd.concat(summaries_mvn, ignore_index=True)
-    csv_name = dirx + '/pm_summaries_mvn_' + job_no + '.csv'
-    summaries_mvn.to_csv(csv_name, sep=',')
-    summary_file = open(csv_name, 'r')
-    LOGGER.output_file(summary_file.name)
-    summary_file.close()
-    columns =['n', 'S_n', 'mse_Dir', 'mse_mvn', 'tmrca_true', 'tmrca_Dir', 'tmrca_mvn', 'thom']
+    columns =['n', 'S_n', 'mse', 'tmrca_true', 'tmrca_est', 'thom']
     result = pd.DataFrame(results, columns=columns)
     fname = dirx + '/compare_priors_result_' + job_no + '.csv'
     result.to_csv(fname, sep=',')
