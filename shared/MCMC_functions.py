@@ -251,13 +251,16 @@ def print_pds(pdfname, variates, labels, truevalues=None, savepdf=True, properti
     with PdfPages(pdfname) as pdf:
         fig = plt.figure(figsize=(15, 6))
         for row, col, label in zip(variates, cols, labels):
-            sns.kdeplot(row, color=col, label=label, bw='scott', gridsize=500)
+            sns.kdeplot(row, color=col, label=label, bw_adjust=5, gridsize=500)
         plt.title(title)
-        plt.xlabel('Generations')
-        plt.ylabel('Frequency', labelpad=25)
+        plt.legend(title='Coalescent event sequence', title_fontsize=14, fontsize=14)
+        plt.xlabel('Generations', fontsize=14)
+        plt.ylabel('Probability density', fontsize=14, labelpad=25)
         plt.xlim([0, xlim])
         plt.ylim([0, ylim])
         ymax = plt.gca().get_ylim()[1]
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
         plt.ticklabel_format(axis='x', style='sci', scilimits=(0,0))
         plt.ticklabel_format(axis='y', style='sci', scilimits=(0,0))
         if truevalues is not None:
