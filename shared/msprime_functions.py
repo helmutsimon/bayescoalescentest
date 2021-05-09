@@ -147,8 +147,8 @@ def simulate_tree_and_sample(sample_size, pop_size, length, recombination_rate, 
     """Simulate a (large) population and take a random sample from it. We return the details of this sample tree
     (sfs, branch lengths and matrix) as well as averages from other population samples to provide data for empirical
     prior. In the first statement we generate a tree for the entire population size."""
-    tree_sequence, variant_array = generate_population_tree(pop_size, pop_size, length, recombination_rate, mutation_rate,
-                                                            growth_rate, events_file)
+    tree_sequence, variant_array = generate_population_tree(pop_size, sample_size, length, recombination_rate,
+                                                            mutation_rate, growth_rate, events_file)
     tree = next(tree_sequence.trees())
     matrix, sample_sfs, coalescence_times = generate_sample_coalescence_times(1, tree, sample_size, variant_array)
     coalescence_times = np.array(coalescence_times)
@@ -157,16 +157,7 @@ def simulate_tree_and_sample(sample_size, pop_size, length, recombination_rate, 
     true_tmrca = np.sum(true_branch_lengths)
     n_seq = np.arange(1, sample_size)
     thom = np.sum(sample_sfs * n_seq) / (sample_size * length * mutation_rate)
-    root = tree.get_root()
-    leaves = [i for i in tree.leaves(root)]
-    sfs_list = Parallel(n_jobs=n_jobs)(delayed(generate_sample_sfs)(i, leaves, sample_size, variant_array) for i
-                                       in range(num_emp_samples))
-    sfs_array = np.array(sfs_list)
-    sfs_mean = np.mean(sfs_array, axis=0)
-    seg_site_array = np.sum(sfs_array, axis=1)
-    seg_site_mean = np.mean(seg_site_array)
-    seg_site_sd = np.std(seg_site_array)
-    return sample_sfs, matrix, true_branch_lengths, true_tmrca, thom, sfs_mean, seg_site_mean, seg_site_sd
+    return sample_sfs, matrix, true_branch_lengths, true_tmrca, thom
 
 
 def get_mode(vars):
