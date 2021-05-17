@@ -53,6 +53,7 @@ LOGGER = CachingLogger(create_dir=True)
               help='Directory name for data and log files. Default is data')
 def main(job_no, n, pop_size, mutation_rate, length, growth_rate, size, num_replicates, cores, draws, dirx):
     start_time = time()
+    np.set_printoptions(formatter={'float': "{0:0.3G}".format})
     if not os.path.exists(dirx):
         os.makedirs(dirx)
     length = int(length)
@@ -73,9 +74,7 @@ def main(job_no, n, pop_size, mutation_rate, length, growth_rate, size, num_repl
         variant_array = np.empty(shape, dtype="u1")
         for variant in tree_sequence.variants():
             variant_array[variant.index] = variant.genotypes
-        # print(variant_array)
         occurrences = np.sum(variant_array, axis=1)
-        # print(occurrences)
         sfs = Counter(occurrences)
         sfs = [sfs[i] for i in range(1, n)]
         sfs_array.append(sfs)
@@ -95,7 +94,7 @@ def main(job_no, n, pop_size, mutation_rate, length, growth_rate, size, num_repl
     seg_sites = np.sum(sfs_array, axis=1)
     seg_site_mean = np.mean(seg_sites)
     seg_site_sd = np.std(seg_sites)
-    print('Mean & sde segregating sites', seg_site_mean, seg_site_sd)
+    print('Mean & sde segregating sites', "%.3G" % seg_site_mean, "%.3G" % seg_site_sd)
     sys.stdout.flush()
     ttl_array = branch_length_array.dot(np.arange(2, n + 1).T)
     ttl_mu = np.mean(ttl_array)
@@ -123,7 +122,7 @@ def main(job_no, n, pop_size, mutation_rate, length, growth_rate, size, num_repl
         branch_vars = MCMC_functions.multiply_variates(trace, 'probs')
         bmd = np.mean(branch_vars, axis=1)
         tmrca_d = np.sum(bmd)
-        mse_d = np.sqrt(np.linalg.norm(bmd - brlens))
+        mse_d = np.sum((bmd - brlens) ** 2)
         print('\nEst. branch lengths Dirichlet prior = '.ljust(25), bmd)
 
         mcmc_model, trace = MCMC_functions.run_MCMC_mvn(sfs, mrate_lower, mrate_upper,
@@ -132,15 +131,16 @@ def main(job_no, n, pop_size, mutation_rate, length, growth_rate, size, num_repl
         summaries_mvn.append(summaryx)
         branch_vars = MCMC_functions.multiply_variates(trace, 'mvn_sample')
         bmw = np.mean(branch_vars, axis=1)
-        tmrca_w = np.sum(bmw)
-        mse_w = np.sqrt(np.linalg.norm(bmw - brlens))
+        tmrca_m = np.sum(bmw)
+        mse_m = np.sum((bmw - brlens) ** 2)
         print('\nEst. branch lengths MVN prior = '.ljust(25), bmw)
         thom = np.sum(sfs * n_seq) / (n * length * mutation_rate)
-        row = [n, np.sum(sfs), mse_d, mse_w, tmrca_true, tmrca_d, tmrca_w, thom]
+        row = [n, np.sum(sfs), mse_d, mse_m, (tmrca_true - tmrca_d) ** 2, (tmrca_true - tmrca_m) ** 2,
+                (tmrca_true - thom) ** 2, tmrca_true, tmrca_d, tmrca_m, thom]
         results.append(row)
-        print('\nTrue TMRCA = '.ljust(25), np.sum(brlens))
-        print('Est. TMRCA Dirichlet prior = '.ljust(25), np.sum(bmd))
-        print('Est. TMRCA MVN prior = '.ljust(25), np.sum(bmw))
+        print('\nTrue TMRCA                 = '.ljust(25), "%.3G" % np.sum(brlens))
+        print('Est. TMRCA Dirichlet prior = '.ljust(25), "%.3G" % np.sum(bmd))
+        print('Est. TMRCA MVN prior       = '.ljust(25), "%.3G" % np.sum(bmw))
         sys.stdout.flush()
 
     LOGGER.log_file_path = dirx + "/" + str(os.path.basename(__file__)) + '_' + job_no + ".log"
@@ -174,16 +174,19 @@ def main(job_no, n, pop_size, mutation_rate, length, growth_rate, size, num_repl
     summary_file = open(csv_name, 'r')
     LOGGER.output_file(summary_file.name)
     summary_file.close()
-    columns =['n', 'S_n', 'mse_Dir', 'mse_mvn', 'tmrca_true', 'tmrca_Dir', 'tmrca_mvn', 'thom']
+    columns = ['n', 'S_n', 'err_Dir', 'err_mvn', 'err_Dir_tmrca', 'err_mvn_tmrca', 'err_thom',
+                    'tmrca_true', 'tmrca_Dir', 'tmrca_mvn', 'thom']
     result = pd.DataFrame(results, columns=columns)
+    col_averages = result.mean(numeric_only=True)
+    result = result.append(col_averages, ignore_index=True)
     fname = dirx + '/compare_priors_result_' + job_no + '.csv'
     result.to_csv(fname, sep=',')
     outfile = open(fname, 'r')
     LOGGER.output_file(outfile.name)
     outfile.close()
+    print('\n', col_averages)
     LOGGER.log_message("%.3G" % ((time() - start_time) / 60), label="Time (minutes)".ljust(25))
 
 
 if __name__ == "__main__":
     main()
-
