@@ -162,7 +162,7 @@ def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order, cores,
     matplotlib.logging.getLogger('matplotlib').setLevel('ERROR')
     matplotlib.logging.getLogger('matplotlib.font_manager').disabled = True
     arviz.rcParams['plot.max_subplots'] = 200
-    tp = plot_trace(trace)
+    tp = plot_trace(trace, compact=False)
 
     try:
         fig = plt.gcf()
