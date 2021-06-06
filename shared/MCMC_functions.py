@@ -103,7 +103,8 @@ def Lehmer_distribution(n):
     return permutation
 
 
-def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=False, order="random", cores=None):
+def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=False, order="random", cores=None,
+                       tune=None):
     """Define and run MCMC model for coalescent tree branch lengths using uniform (Dirichlet) prior."""
     config.compute_test_value = 'raise'
     n = len(sfs) + 1
@@ -153,7 +154,8 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
     with combined_model:
         step1 = Metropolis([probs, mut_rate, total_length])
         step2 = CategoricalGibbsMetropolis(permutation, order=order)
-        tune = int(draws / 5)
+        if tune is None:
+            tune = int(draws / 5)
         start = {'total_length': ttl_est.eval()}
         trace = sample(draws, tune=tune, step=[step1, step2],
                        progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
@@ -161,7 +163,7 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
 
 
 def run_MCMC_mvn(sfs, mrate_lower, mrate_upper, mu, sigma, ttl_mu, ttl_sigma, draws=50000,
-                 progressbar=False, order="random", cores=None):
+                 progressbar=False, order="random", cores=None, tune=None):
     """Define and run MCMC model for coalescent tree branch lengths using a multivariate normal prior."""
     config.compute_test_value = 'raise'
     n = len(sfs) + 1
@@ -209,7 +211,8 @@ def run_MCMC_mvn(sfs, mrate_lower, mrate_upper, mu, sigma, ttl_mu, ttl_sigma, dr
     with combined_model:
         step1 = Metropolis([mvn_sample, mut_rate, total_length])
         step2 = CategoricalGibbsMetropolis(permutation, order=order)
-        tune = int(draws / 5)
+        if tune is None:
+            tune = int(draws / 5)
         trace = sample(draws, tune=tune, step=[step1, step2], progressbar=progressbar,
                        cores=cores, return_inferencedata=False)
     return combined_model, trace
