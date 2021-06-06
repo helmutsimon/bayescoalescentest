@@ -55,6 +55,8 @@ def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order, cores,
     draws = int(draws)
     if cores is not None:
         cores = int(cores)
+    if tune is not None:
+        tune = int(tune)
     file_path = dirx + '/' + filename
     with gzip.open(file_path, 'rb') as results:
         results = pickle.load(results)
