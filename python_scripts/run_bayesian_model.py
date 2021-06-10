@@ -47,16 +47,15 @@ LOGGER = CachingLogger(create_dir=True)
 @click.option('-o', '--order', default="random", help='Parameter for CategoricalGibbsMetropolis step.')
 @click.option('-co', '--cores', default=None)
 @click.option('-t', '--tune', default=None)
+@click.option('-s', '--step', default=None)
 @click.option('-dir', '--dirx', default='data', help='Directory for data and log files. Default is data')
-def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order, cores, tune, dirx):
+def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order, cores, tune, step, dirx):
     start_time = time()
     if not os.path.exists(dirx):
         os.makedirs(dirx)
     draws = int(draws)
     if cores is not None:
         cores = int(cores)
-    if tune is not None:
-        tune = int(tune)
     file_path = dirx + '/' + filename
     with gzip.open(file_path, 'rb') as results:
         results = pickle.load(results)
@@ -90,7 +89,7 @@ def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order, cores,
         ttl_mu = np.mean(ttl_array)
         ttl_sigma = np.std(ttl_array)
         model, trace = MCMC_functions.run_MCMC_mvn(sfs, lims[0], lims[1], mu, sigma,
-                                                ttl_mu, ttl_sigma, draws, order=order, cores=cores, tune=tune)
+                                ttl_mu, ttl_sigma, draws, order=order, cores=cores, tune=tune, step=step)
     else:
         print('Uninformative priors for relative branch lengths and total tree lngth.')
         variable_name = 'probs'
@@ -98,7 +97,7 @@ def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order, cores,
         sd_mut_rate = mutation_rate[1]
         print('Mean and sd of mut_rate;'.ljust(25), seq_mut_rate, sd_mut_rate)
         model, trace = MCMC_functions.run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate,
-                                                draws, order=order, cores=cores, tune=tune)
+                                draws, order=order, cores=cores, tune=tune, step=step)
     summaryx = summary(trace)
     print('\n', summaryx)
     csv_name = dirx + '/pm_summary_' + job_no + '.csv'
