@@ -113,6 +113,8 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
     sfs = np.array(sfs)
     sfs = tt.as_tensor(sfs)
     seg_sites = sum(sfs)
+    q_est = sfs + (seg_sites * .001)
+    q_est = q_est / tt.sum(q_est)
     ttl_est = (seg_sites + 1) / seq_mut_rate
     if order == "inc":
         order = np.arange(n - 2)
@@ -160,7 +162,7 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
             step = step2
         if tune is None:
             tune = int(draws / 5)
-        start = {'total_length': ttl_est.eval()}
+        start = {'total_length': ttl_est.eval(), 'probs': q_est.eval()}
         trace = sample(draws, tune=tune, step=step,
                        progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
     return combined_model, trace
@@ -175,6 +177,8 @@ def run_MCMC_mvn(sfs, mrate_lower, mrate_upper, mu, sigma, ttl_mu, ttl_sigma, dr
     sfs = np.array(sfs)
     sfs = tt.as_tensor(sfs)
     seg_sites = sum(sfs)
+    q_est = sfs + (seg_sites * .001)
+    q_est = q_est / tt.sum(q_est)
     if order == "inc":
         order = np.arange(n - 2)
     elif order == "dec":
@@ -221,8 +225,9 @@ def run_MCMC_mvn(sfs, mrate_lower, mrate_upper, mu, sigma, ttl_mu, ttl_sigma, dr
             step = step2
         if tune is None:
             tune = int(draws / 5)
+        start = {'mvn_sample': q_est.eval()}
         trace = sample(draws, tune=tune, step=step, progressbar=progressbar,
-                       cores=cores, return_inferencedata=False)
+                       cores=cores, start=start, return_inferencedata=False)
     return combined_model, trace
 
 
