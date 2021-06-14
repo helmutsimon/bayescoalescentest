@@ -13,7 +13,7 @@ from pymc3.distributions.discrete import Poisson, Categorical
 from pymc3.distributions.continuous import Gamma, Beta, Uniform
 from pymc3.model import Model
 from pymc3.sampling import sample
-from pymc3 import step_methods
+#from pymc3 import step_methods
 from pymc3.step_methods.metropolis import Metropolis, CategoricalGibbsMetropolis
 from pymc3.distributions.transforms import Transform, StickBreaking
 from pymc3.theanof import floatX
@@ -163,9 +163,9 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
             step = step2
         if tune is None:
             tune = int(draws / 5)
-        step_methods.hmc.nuts.NUTS(target_accept=0.9)
+        #step_methods.hmc.nuts.NUTS(target_accept=0.9)
         start = {'total_length': ttl_est.eval(), 'probs': q_est.eval()}
-        trace = sample(draws, tune=tune, step=step,
+        trace = sample(draws, tune=tune, step=step, target_accept=0.95,
                        progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
     return combined_model, trace
 
