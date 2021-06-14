@@ -165,7 +165,7 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
             tune = int(draws / 5)
         #step_methods.hmc.nuts.NUTS(target_accept=0.9)
         start = {'total_length': ttl_est.eval(), 'probs': q_est.eval()}
-        trace = sample(draws, tune=tune, step=step, target_accept=0.95,
+        trace = sample(draws, tune=tune, step=step, nuts={'target_accept':0.95},
                        progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
     return combined_model, trace
 
