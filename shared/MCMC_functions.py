@@ -157,16 +157,17 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
     with combined_model:
         step1 = Metropolis([probs, mut_rate, total_length])
         step2 = CategoricalGibbsMetropolis(permutation, order=order)
-        if step == "metr":
-            step = [step1, step2]
-        else:
-            step = step2
         if tune is None:
             tune = int(draws / 5)
-        #step_methods.hmc.nuts.NUTS(target_accept=0.9)
         start = {'total_length': ttl_est.eval(), 'probs': q_est.eval()}
-        trace = sample(draws, tune=tune, step=step, nuts={'target_accept':target_accept},
-                       progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
+        if step == "metr":
+            step = [step1, step2]
+            trace = sample(draws, tune=tune, step=step,
+                           progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
+        else:
+            step = step2
+            trace = sample(draws, tune=tune, step=step, nuts={'target_accept':target_accept},
+                           progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
     return combined_model, trace
 
 
