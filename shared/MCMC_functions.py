@@ -105,11 +105,11 @@ def Lehmer_distribution(n):
 
 
 def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=False, order="random", cores=None,
-                       tune=None, step=None, target_accept=0.9):
+                       tune=None, step=None, target_accept=0.9, concentration=1.0):
     """Define and run MCMC model for coalescent tree branch lengths using uniform (Dirichlet) prior."""
     config.compute_test_value = 'raise'
     n = len(sfs) + 1
-    prior = np.ones(n - 1)
+    prior = concentration * np.ones(n - 1)
     j_n = np.diag(1 / np.arange(2, n + 1, dtype=np.float32))
     sfs = np.array(sfs)
     sfs = tt.as_tensor(sfs)
