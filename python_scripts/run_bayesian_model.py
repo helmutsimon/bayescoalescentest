@@ -108,7 +108,9 @@ def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order,
     csv_name = dirx + '/pm_summary_' + job_no + '.csv'
     summaryx.to_csv(csv_name, sep=',')
     trace_df = tracetab.trace_to_dataframe(trace, include_transformed=True)
-    trace_df.to_csv(dirx + '/pm_trace_' + job_no + '.csv')
+    trname = dirx + '/pm_trace_' + job_no + '.pklz'
+    with gzip.open(trname, 'wb') as buff:
+        pickle.dump(trace_df, buff)
     mut_rate_vars = [t['mut_rate'] for t in trace]
     mut_rate_vars = np.array(mut_rate_vars)
     mrate = np.mean(mut_rate_vars)
@@ -148,6 +150,9 @@ def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order,
     LOGGER.input_file(data_file.name)
     data_file.close()
     summary_file = open(csv_name, 'r')
+    LOGGER.output_file(summary_file.name)
+    summary_file.close()
+    summary_file = open(trname, 'r')
     LOGGER.output_file(summary_file.name)
     summary_file.close()
 
