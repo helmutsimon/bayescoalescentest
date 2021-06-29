@@ -161,6 +161,8 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
             tune = int(draws / 5)
         if use_start:
             start = {'total_length': ttl_est.eval(), 'probs': q_est.eval()}
+        else:
+            start = None
         if step == "metr":
             step = [step1, step2]
             trace = sample(draws, tune=tune, step=step,
