@@ -105,7 +105,7 @@ def Lehmer_distribution(n):
 
 
 def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=False, order="random", cores=None,
-                       tune=None, step=None, target_accept=0.9, concentration=1.0):
+                       tune=None, step=None, target_accept=0.9, concentration=1.0, use_start=True):
     """Define and run MCMC model for coalescent tree branch lengths using uniform (Dirichlet) prior."""
     config.compute_test_value = 'raise'
     n = len(sfs) + 1
@@ -159,7 +159,8 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
         step2 = CategoricalGibbsMetropolis(permutation, order=order)
         if tune is None:
             tune = int(draws / 5)
-        start = {'total_length': ttl_est.eval(), 'probs': q_est.eval()}
+        if use_start:
+            start = {'total_length': ttl_est.eval(), 'probs': q_est.eval()}
         if step == "metr":
             step = [step1, step2]
             trace = sample(draws, tune=tune, step=step,
