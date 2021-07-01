@@ -239,7 +239,7 @@ def multiply_variates(trace, variable_name):
     variable_name is 'mvn_sample' for multivariate normal prior, 'probs' for flat Dirichlet prior.
 
     """
-    vars_rel = [t[variable_name] for t in trace]
+    vars_rel = trace[variable_name]
     vars_rel = np.array(vars_rel)
     if variable_name == 'mvn_sample':
         vars_rel = stick_bv.backward_val(vars_rel)
@@ -247,7 +247,7 @@ def multiply_variates(trace, variable_name):
     n0 = vars_rel.shape[1]
     j_n = np.diag(1 / np.arange(2, n0 + 2))
     vars_rel = j_n.dot(vars_rel.T)
-    vars_TTL = [t['total_length'] for t in trace]
+    vars_TTL = trace['total_length']
     vars_TTL = np.array(vars_TTL)
     assert size == len(vars_TTL), 'Mismatch between number of draws for rel branch lengths and TTL.'
     vars_TTL.shape = (size, 1)
