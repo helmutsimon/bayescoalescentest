@@ -166,6 +166,7 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
             step = step2
             trace = sample(draws, tune=tune, step=step, nuts={'target_accept':target_accept},
                            progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
+        assert trace['probs'].shape[0] == trace.nchains * draws, 'Draws not retrieved from all chains.'
     return combined_model, trace
 
 
@@ -226,6 +227,7 @@ def run_MCMC_mvn(sfs, mrate_lower, mrate_upper, mu, sigma, ttl_mu, ttl_sigma, dr
             tune = int(draws / 5)
         trace = sample(draws, tune=tune, step=step, progressbar=progressbar,
                        cores=cores, return_inferencedata=False)
+        assert trace['mvn_sample'].shape[0] == trace.nchains * draws, 'Draws not retrieved from all chains.'
     return combined_model, trace
 
 
