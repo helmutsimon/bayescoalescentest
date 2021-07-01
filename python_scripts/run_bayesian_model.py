@@ -50,10 +50,9 @@ LOGGER = CachingLogger(create_dir=True)
 @click.option('-s', '--step', default=None)
 @click.option('-ta', '--target_accept', default=0.9)
 @click.option('-cn', '--concentration', default=1.0)
-@click.option('--start/--no-start', default=True, help='If flag is set, start value is calculated.')
 @click.option('-dir', '--dirx', default='data', help='Directory for data and log files. Default is data.')
 def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order,
-                cores, tune, step, target_accept, concentration, start, dirx):
+                cores, tune, step, target_accept, concentration, dirx):
     start_time = time()
     if not os.path.exists(dirx):
         os.makedirs(dirx)
@@ -103,8 +102,7 @@ def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order,
         sd_mut_rate = mutation_rate[1]
         print('Mean and sd of mut_rate;'.ljust(25), seq_mut_rate, sd_mut_rate)
         model, trace = MCMC_functions.run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws, order=order,
-                cores=cores, tune=tune, step=step, target_accept=target_accept, concentration=concentration,
-                use_start=start)
+                cores=cores, tune=tune, step=step, target_accept=target_accept, concentration=concentration)
     summaryx = summary(trace)
     print('\n', summaryx)
     csv_name = dirx + '/pm_summary_' + job_no + '.csv'
