@@ -111,8 +111,7 @@ def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order,
     trname = dirx + '/pm_trace_' + job_no + '.pklz'
     with gzip.open(trname, 'wb') as buff:
         pickle.dump(trace_df, buff)
-    mut_rate_vars = [t['mut_rate'] for t in trace]
-    mut_rate_vars = np.array(mut_rate_vars)
+    mut_rate_vars = trace['mut_rate']
     mrate = np.mean(mut_rate_vars)
     print('Mean mutation rate = '.ljust(25), '%.8f' % mrate)
     print('STD mutation rate =  '.ljust(25), '%.8f' % np.std(mut_rate_vars))
