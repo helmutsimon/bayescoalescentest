@@ -5,7 +5,7 @@
 Run MCMC analysis of dataset in the form produced by simulate_population.py. It saves an array of branch length variates.
 A typical run statement is:
 
-nohup python3 /Users/helmutsimon/repos/bayescoalescentest/python_scripts/run_bayesian_model.py 014 tree_simulations_sp020 5e-9 1e3 50000 > rbm014.txt &
+nohup python /Users/helmutsimon/repos/bayescoalescentest/python_scripts/run_bayesian_model.py 014 tree_simulations_sp020 5e-9 1e3 50000 > rbm014.txt &
 
 
 """
@@ -83,8 +83,7 @@ def main(job_no, filename, mutation_rate, simuljobno, lims, draws, order,
         rbl_variates = np.array(rbl_variates)
         j_n_inv = np.diag(np.arange(2, n + 1))
         simplex_variates = j_n_inv.dot(rbl_variates.T).T
-        stick_bv = MCMC_functions.StickBreaking_bv()
-        transf_variates = stick_bv.forward_val(simplex_variates)
+        transf_variates = MCMC_functions.forward_val(simplex_variates)
         mu = np.mean(transf_variates, axis=0)
         sigma = np.cov(transf_variates, rowvar=False)
         filename = dirx + '/brlens_' + simuljobno + '.csv'

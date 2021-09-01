@@ -13,11 +13,9 @@ from pymc3.distributions.discrete import Poisson, Categorical
 from pymc3.distributions.continuous import Gamma, Beta, Uniform
 from pymc3.model import Model
 from pymc3.sampling import sample
-#from pymc3 import step_methods
 from pymc3.step_methods.metropolis import Metropolis, CategoricalGibbsMetropolis
-from pymc3.distributions.transforms import Transform, StickBreaking
-from pymc3.theanof import floatX
-from theano import config
+from pymc3.distributions.transforms import StickBreaking
+from theano import config, function
 import theano.tensor as tt
 from theano.compile.ops import as_op
 import numpy as np
@@ -33,7 +31,7 @@ import seaborn as sns
 __author__ = "Helmut Simon"
 __copyright__ = "© Copyright 2021, Helmut Simon"
 __license__ = "BSD-3"
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __maintainer__ = "Helmut Simon"
 __email__ = "helmut.simon@anu.edu.au"
 __status__ = "Test"
@@ -69,29 +67,6 @@ def derive_tree_matrix(f):
     result.append(lastrow)
     mx = np.stack(result, axis=0)
     return mx
-
-
-class StickBreaking_bv(Transform):
-    """
-    Transforms K - 1 dimensional simplex space (k values in [0,1] and that sum to 1) to a K - 1 vector of real values.
-    This is a variant of the isometric logratio transformation:
-    Adapted from PyMC3 StickBreaking transform, with inclusion of backward_val.
-    """
-
-    name = "stick_bv"
-
-    forward = StickBreaking.forward
-    backward = StickBreaking.backward
-    forward_val = StickBreaking.forward_val
-
-    def backward_val(self, y_):
-        y = y_.T
-        y = np.concatenate([y, -np.sum(y, 0, keepdims=True)])
-        e_y = np.exp(y - np.max(y, 0, keepdims=True))
-        x = e_y / np.sum(e_y, 0, keepdims=True)
-        return floatX(x.T)
-
-stick_bv = StickBreaking_bv()
 
 
 def Lehmer_distribution(n):
@@ -170,6 +145,16 @@ def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=
     return combined_model, trace
 
 
+#Define transforms for MVN (informative) prior
+xf = tt.matrix()
+out = StickBreaking().forward(xf)
+forward_val = function([xf], out)
+
+xb = tt.matrix()
+out = StickBreaking().backward(xb)
+backward_val = function([xb], out)
+
+
 def run_MCMC_mvn(sfs, mrate_lower, mrate_upper, mu, sigma, ttl_mu, ttl_sigma, draws=50000,
                  progressbar=False, order="random", cores=None, tune=None, step=None):
     """Define and run MCMC model for coalescent tree branch lengths using a multivariate normal prior."""
@@ -207,7 +192,7 @@ def run_MCMC_mvn(sfs, mrate_lower, mrate_upper, mu, sigma, ttl_mu, ttl_sigma, dr
         jmx = jmatrix(permutation_tt)
 
         mvn_sample = MvNormal('mvn_sample', mu=mu, cov=sigma, shape=(n - 2))
-        simplex_sample = stick_bv.backward(mvn_sample)
+        simplex_sample = StickBreaking().backward(mvn_sample)
         q = tt.dot(jmx, simplex_sample.T)
         sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=q, observed=sfs)
 
@@ -241,7 +226,7 @@ def multiply_variates(trace, variable_name):
     vars_rel = trace[variable_name]
     vars_rel = np.array(vars_rel)
     if variable_name == 'mvn_sample':
-        vars_rel = stick_bv.backward_val(vars_rel)
+        vars_rel = backward_val(vars_rel)
     size = vars_rel.shape[0]
     n0 = vars_rel.shape[1]
     j_n = np.diag(1 / np.arange(2, n0 + 2))
