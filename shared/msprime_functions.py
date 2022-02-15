@@ -133,8 +133,9 @@ def generate_population_tree(pop_size, sample_size, length, recombination_rate,
     if print_history:
         demographic_hist.print_history()
     sys.stdout.flush()
-    tree_sequence = msprime.simulate(Ne=pop_size, population_configurations=population_configurations, demographic_events=
-                demographic_events, length=length, recombination_rate=recombination_rate, mutation_rate=mutation_rate)
+    tree_sequence = msprime.simulate(Ne=pop_size, population_configurations=population_configurations,
+                        demographic_events=demographic_events, length=length, recombination_rate=recombination_rate,
+                        mutation_rate=mutation_rate)
     shape = tree_sequence.get_num_mutations(), tree_sequence.get_sample_size()
     variant_array = np.empty(shape, dtype="u1")
     for variant in tree_sequence.variants():
