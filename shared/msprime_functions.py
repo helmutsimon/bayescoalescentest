@@ -143,8 +143,7 @@ def generate_population_tree(pop_size, sample_size, length, recombination_rate,
     return tree_sequence, variant_array
 
 
-def simulate_tree_and_sample(sample_size, pop_size, length, recombination_rate, mutation_rate, growth_rate, events_file,
-                  n_jobs, num_emp_samples):
+def simulate_tree_and_sample(sample_size, pop_size, length, recombination_rate, mutation_rate, growth_rate, events_file):
     """Simulate a (large) population and take a random sample from it. We return the details of this sample tree
     (sfs, branch lengths and matrix) as well as averages from other population samples to provide data for empirical
     prior. In the first statement we generate a tree for the entire population size."""

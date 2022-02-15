@@ -42,12 +42,10 @@ LOGGER = CachingLogger(create_dir=True)
 @click.argument('length', type=float)
 @click.argument('growth_rate', type=float)
 @click.argument('n', type=int)
-@click.argument('num_emp_samples', type=int)
 @click.option('-d', '--dir', default='data', type=click.Path(),
               help='Directory name for data and log files. Default is data')
-@click.option('-j', '--n_jobs', default=5, type=int, help='Number of parallel jobs.')
 @click.option('-e', '--events_file', default=None, help='Name of file containing demographic events')
-def main(job_no, pop_size, mutation_rate, length, growth_rate, n, num_emp_samples, dir, n_jobs, events_file):
+def main(job_no, pop_size, mutation_rate, length, growth_rate, n, dir, events_file):
     start_time = time()
     if not os.path.exists(dir):
         os.makedirs(dir)
@@ -63,7 +61,7 @@ def main(job_no, pop_size, mutation_rate, length, growth_rate, n, num_emp_sample
     np.set_printoptions(precision=3)
     n_seq = np.arange(1, n)
     sample_sfs, matrix, true_branch_lengths, true_tmrca, thom = msprime_functions.simulate_tree_and_sample \
-            (n, pop_size, length, 0., mutation_rate, growth_rate, events_file, n_jobs, num_emp_samples)
+            (n, pop_size, length, 0., mutation_rate, growth_rate, events_file)
     results = [sample_sfs, true_branch_lengths]
     filename = 'data/tree_simulations_' + job_no
     with gzip.open(filename, 'wb') as outfile:
@@ -75,9 +73,6 @@ def main(job_no, pop_size, mutation_rate, length, growth_rate, n, num_emp_sample
     var_thom = np.sum(sample_sfs * n_seq * n_seq) / (2 * n * length * mutation_rate) ** 2
     LOGGER.log_message(str(sample_sfs), label='SFS'.ljust(25))
     LOGGER.log_message(str(true_branch_lengths), label='True branch lengths'.ljust(25))
-    #LOGGER.log_message(str(sfs_mean), label='Mean of sampled SFSs'.ljust(25))
-    #LOGGER.log_message(str(seg_site_mean), label='Mean of seg. sites '.ljust(25))
-    #LOGGER.log_message(str(seg_site_sd), label='Std. dev. of seg sites'.ljust(25))
     LOGGER.log_message(str(np.sum(true_branch_lengths)), label='True TMRCA'.ljust(25))
     LOGGER.log_message("%.4f" % thom, label='Thomson TMRCA'.ljust(25))
     LOGGER.log_message("%.4f" % np.sqrt(var_thom), label="Thomson st. dev.".ljust(25))
