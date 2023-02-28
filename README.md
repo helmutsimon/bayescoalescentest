@@ -26,9 +26,9 @@ The second is a list of true branch lengths comprising a list of real numbers. T
 The input file is zipped and pickled (see nbks/Pre-process_Nuu_Chah_Nulth_data.ipynb for an example of how to create such a file).
 The file should reside in ./data directory (or use -dir option for a different directory name).
 
-Mandatory parameters for run_bayesian_model.py are a job_number (used to label output) and the name of the input file described above.
+Mandatory parameters for run_bayesian_model.py are a job_number (used to label output), the sample size, n and the name of the input file described above.
 
-run_bayesian_model.py has two main modes: uninformative prior and informative (multivariate normal or MVN) prior.
+run_bayesian_model.py can use an uninformative prior or a model-based (multivariate normal or MVN) prior.
 
 For the uninformative prior, the following parameter is also required:
 
