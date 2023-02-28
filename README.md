@@ -160,6 +160,6 @@ Coalescent theory: an introduction.
 Roberts & Company, Greenwood Village Colorado.
 
 <a id="6">[6]</a> 
-Sainudiin, R., Thornton, K., Harlow, J., Booth, J., Stillman, M., Yoshida, R., Grifths, R., Gil, M., and Donnelly, P. (2011). 
+Sainudiin, R., Thornton, K., Harlow, J., Booth, J., Stillman, M., Yoshida, R., Griffiths, R., Gil, M., and Donnelly, P. (2011). 
 Experiments with the site frequency spectrum. 
 Bulletin of Mathematical Biology, 73(4): 829-872.
