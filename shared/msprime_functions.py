@@ -6,11 +6,15 @@ import msprime
 import numpy as np
 import pandas as pd
 from collections import Counter
-from joblib import Parallel, delayed
-from scitrack import CachingLogger
 
-LOGGER = CachingLogger(create_dir=True)
 
+__author__ = "Helmut Simon"
+__copyright__ = "© Copyright 2023, Helmut Simon"
+__license__ = "BSD-3"
+__version__ = "0.2.0"
+__maintainer__ = "Helmut Simon"
+__email__ = "hsimon@bigpond.net.au"
+__status__ = "Test"
 
 
 def get_next_coalescent(tree, ancestors):
@@ -101,9 +105,6 @@ def read_demographic_history(filename, print_history):
     if isinstance(filename, str):
         if filename[-4:] != '.csv':
             filename = filename + '.csv'
-            infile = open(filename, 'r')
-            LOGGER.input_file(infile.name)
-            infile.close()
         demo_parameters = pd.read_csv(filename)
     elif isinstance(filename, pd.DataFrame):
         demo_parameters = filename
