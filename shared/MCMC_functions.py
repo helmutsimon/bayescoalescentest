@@ -29,11 +29,11 @@ import seaborn as sns
 
 
 __author__ = "Helmut Simon"
-__copyright__ = "© Copyright 2021, Helmut Simon"
+__copyright__ = "© Copyright 2023, Helmut Simon"
 __license__ = "BSD-3"
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 __maintainer__ = "Helmut Simon"
-__email__ = "helmut.simon@anu.edu.au"
+__email__ = "hsimon@bigpond.net.au"
 __status__ = "Test"
 
 
@@ -213,6 +213,185 @@ def run_MCMC_mvn(sfs, mrate_lower, mrate_upper, mu, sigma, ttl_mu, ttl_sigma, dr
         trace = sample(draws, tune=tune, step=step, progressbar=progressbar,
                        cores=cores, return_inferencedata=False)
         assert trace['mvn_sample'].shape[0] == trace.nchains * draws, 'Draws not retrieved from all chains.'
+    return combined_model, trace
+
+
+def sample_Dirichlet_function(prior):
+    def sample_Dirichlet_prior():
+        probs = Dirichlet('probs', prior)
+        return probs
+
+    return sample_Dirichlet_prior
+
+
+def sample_MVN_function(n, mu, sigma):
+    def sample_MVN_prior():
+        mvn_sample = MvNormal('mvn_sample', mu=mu, cov=sigma, shape=(n - 2))
+        simplex_sample = StickBreaking().backward(mvn_sample)
+        return simplex_sample
+
+    return sample_MVN_prior
+
+
+def unfolded_probabilities(q0):
+    return (q0)
+
+
+def probabilities_function_folded(n):
+    def folded_probabilities(q0):
+        x = q0 + np.flip(q0)
+        pol = ((n - 1) % 2) + 1
+        ul = (int((n - 1) / 2) + pol - 1)
+        pfold = x[: ul]
+        mask = np.ones(ul)
+        mask[-1] = 1. / pol
+        mask = tt.as_tensor(mask)
+        return np.multiply(pfold, mask)
+
+    return folded_probabilities
+
+
+def unfolded_probabilities(q0):
+    return (q0)
+
+
+def sample_mutation_rate_Dirichlet_function(seq_mut_rate, sd_mut_rate):
+    def sample_mutation_rate_Dirichlet():
+        return Beta('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
+
+    return sample_mutation_rate_Dirichlet
+
+
+def sample_mutation_rate_MVN_function(mrate_lower, mrate_upper):
+    def sample_mutation_rate_MVN():
+        return Uniform('mut_rate', lower=mrate_lower, upper=mrate_upper)
+
+    return sample_mutation_rate_MVN
+
+def sample_ttl_Dirichlet_function():
+    def sample_ttl_Dirichlet():
+        return Gamma('total_length', alpha=1, beta=1e-10)
+
+    return sample_ttl_Dirichlet
+
+
+def sample_ttl_MVN_function(ttl_mu, ttl_sigma):
+
+    def sample_ttl_MVN():
+        return Gamma('total_length', mu=ttl_mu, sigma=ttl_sigma)
+
+    return sample_ttl_MVN
+
+
+def Thomson_estimate(sfs, mrate):
+    """
+    Estimate TMRCA from site frequency spectrum (SFS). The SFS must be unfolded
+    :param
+    sfs: numpy.ndarray
+        An unfolded site frequency spectrum
+    mrate: float
+        Sequence mutation rate per generation
+    :returns
+    numpy.float64
+        Thomson estimate of TMRCA and standard deviation
+    numpy.float64
+        standard deviation of Thomson estimate.
+    """
+
+    n = len(sfs) + 1
+    n_seq = np.arange(1, n)
+    thom = np.sum(sfs * n_seq) / (n * mrate)
+    var_thom = np.sum(sfs * n_seq * n_seq) / (2 * n * mrate) ** 2
+    return thom, np.sqrt(var_thom)
+
+def run_MCMC(n, sfs, variable_name, seq_mut_rate=None, sd_mut_rate=None,
+             mrate_lower=None, mrate_upper=None, mu=None, sigma=None, ttl_mu=None, ttl_sigma=None,
+             folded=False, draws=50000, progressbar=False, order="random",
+             cores=None, tune=None, step=None, target_accept=0.9, concentration=1.0):
+    """Define and run MCMC model for coalescent tree branch lengths. This function allows the following options:
+       - uninformative (Dirichlet, given by setting variable-name parameter to 'probs') vs model-based
+         (MVN, given by setting variable-name parameter to 'mvn_sample') prior distributions; and
+       - data is folded (set folded=True) or unfolded SFS (default)."""
+    config.compute_test_value = 'raise'
+    if folded:
+        print('Folded SFS.')
+        assert len(sfs) == int(n / 2), 'n inconsistent with length of folded sfs'
+        allele_probabilities = probabilities_function_folded(n)
+    else:
+        print('Unfolded SFS.')
+        assert len(sfs) == n - 1, 'n inconsistent with length of unfolded sfs'
+        allele_probabilities = unfolded_probabilities
+    j_n = np.diag(1 / np.arange(2, n + 1, dtype=np.float32))
+    sfs = np.array(sfs)
+    sfs = tt.as_tensor(sfs)
+    seg_sites = sum(sfs)
+    if variable_name == 'probs':  # Dirichlet prior
+        prior = concentration * np.ones(n - 1)
+        sample_prior = sample_Dirichlet_function(prior)
+        assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
+        sample_mutation_rate = sample_mutation_rate_Dirichlet_function(seq_mut_rate, sd_mut_rate)
+        sample_ttl = sample_ttl_Dirichlet_function()
+        ttl_est = (seg_sites + 1) / seq_mut_rate
+        start = {'total_length': ttl_est.eval()}
+    else:
+        sample_prior = sample_MVN_function(n, mu, sigma)
+        sample_mutation_rate = sample_mutation_rate_MVN_function(mrate_lower, mrate_upper)
+        sample_ttl = sample_ttl_MVN_function(ttl_mu, ttl_sigma)
+        start = {'total_length': ttl_mu}
+
+    if order == "inc":
+        order = np.arange(n - 2)
+    elif order == "dec":
+        order = np.arange(n - 2)
+        order = np.flip(order)
+    else:
+        order = "random"
+
+    def infer_matrix_shape(fgraph, node, input_shapes):
+        return [(n - 1, n - 1)]
+
+    @as_op(itypes=[tt.lvector], otypes=[tt.fmatrix], infer_shape=infer_matrix_shape)
+    def jmatrix(i):
+        """Derive tree matrix from Lehmer code representation."""
+        mx = derive_tree_matrix(i)
+        mx = np.reshape(mx, (n - 1, n - 1))
+        mx = np.transpose(mx)
+        jmx = mx.dot(j_n)
+        jmx = jmx.astype('float32')
+        return jmx
+
+    with Model() as combined_model:
+        # Create sequence of categorical distributions to sample Lehmer code representation.
+        permutation = Lehmer_distribution(n)
+        permutation_tt = tt.as_tensor(permutation)
+        jmx = jmatrix(permutation_tt)
+
+        probs = sample_prior()
+        q0 = tt.dot(jmx, probs.T)
+        q = allele_probabilities(q0)
+
+        sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=q, observed=sfs)
+
+        total_length = sample_ttl()
+        mut_rate = sample_mutation_rate()
+        mu = total_length * mut_rate
+        seg_sites_obs = Poisson('seg_sites_obs', mu=mu, observed=seg_sites)
+
+    with combined_model:
+        step1 = Metropolis([probs, mut_rate, total_length])
+        step2 = CategoricalGibbsMetropolis(permutation, order=order)
+        if tune is None:
+            tune = int(draws / 5)
+        #start = {'total_length': startval}
+        if step == "metr":
+            step = [step1, step2]
+            trace = sample(draws, tune=tune, step=step,
+                           progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
+        else:
+            step = step2
+            trace = sample(draws, tune=tune, step=step, nuts={'target_accept': target_accept},
+                           progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
+        assert trace[variable_name].shape[0] == trace.nchains * draws, 'Draws not retrieved from all chains.'
     return combined_model, trace
 
 
