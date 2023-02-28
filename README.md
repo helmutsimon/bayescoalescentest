@@ -22,9 +22,9 @@ The software also provides methods for visualising the posterior distributions.
 
 Theory and examples are available in the manuscript: Simon, H. and Huttley, G., 2021 *Bayesian Inference of Joint Coalescence Times for Sampled Sequences*. bioRxiv doi = 10.1101/2021.07.23.453461.
 
-## 1. INSTALLATION (for PyMC3 3.11.2)
+## 2. INSTALLATION (for PyMC3 3.11.2)
 
-### 1.1 Create Conda environment and install PyMC3 (see https://discourse.pymc.io/t/pymc3-final-stable-release-on-conda/8172)
+### 2.1 Create Conda environment and install PyMC3 (see https://discourse.pymc.io/t/pymc3-final-stable-release-on-conda/8172)
 
 ```
 conda create --name pymc3.11.2 python=3.9
@@ -37,9 +37,9 @@ The following packages should be installed:
 
 cogent3, scipy, numpy, pandas, more-itertools, click, scitrack, matplotlib, seaborn, msprime (if simulations are required)
 
-### 1.2 Clone bayescoalescentest repository from GitHub.
+### 2.2 Clone bayescoalescentest repository from GitHub.
 
-## 2. RUN BAYESIAN MODEL (python_scripts/run_bayesian_model.py)
+## 3. RUN BAYESIAN MODEL (python_scripts/run_bayesian_model.py)
 
 
 run_bayesian_model.py requires an input file consisting of a Python list, pickled and compressed with gzip. The list contains two elements. The first is a site frequency spectrum comprising a list of integers.
@@ -76,7 +76,7 @@ Remaining parameters are primarily for experimental purposes.
 
 The primary output is a file containing samples from the posterior distribution of branch lengths. The primary tool to analyse/visualise this output is the Jupiter notebook 'plots_and_tables/plots and tables.ipynb'.
 
-## 3. DATA SIMULATION (python_scripts/simulate_population.py)
+## 4. DATA SIMULATION (python_scripts/simulate_population.py)
 
 
 simulate_population.py allows simulated data to be generated using msprime, creating an input file for run_bayesian_model.py. It generates an output file containing a list of SFS and 
@@ -94,7 +94,7 @@ Optional parameters are:
     -d  directory name for data, default is 'data'
     -e  events_file. This is used for more complex demographies. It is a .csv file with columns headed 'time', 'size' and 'rate'. For each row the 'time' field is the number of generations into the past at which a demographic change occurred. 'Size' and 'rate' are the population size and growth rate from that time point (going backward into past).  The initial population size and growth rate (from time=0) are given by the mandatory parameters.
 
-## 4. USE INFORMATIVE (MVN) PRIOR (simulate_multiples.py)
+## 5. USE INFORMATIVE (MVN) PRIOR (simulate_multiples.py)
 
 
 simulate_multiples.py generates csv files of samples of branch lengths and relative branch lengths as input to run_bayesian_model.py if an MVN prior is used.
@@ -114,7 +114,7 @@ Optional parameters are:
     -d  directory name for data, default is 'data'
     -e  events_file. As for simulate_population.py
 
-## 5. PRESENT AND VISUALISE RESULTS (plots_and_tables/plots and tables.ipynb)
+## 6. PRESENT AND VISUALISE RESULTS (plots_and_tables/plots and tables.ipynb)
 
 
     This Jupiter notebook allows display of posterior distributions of branch lengths and coalescent times in the form of line graphs and heat maps. It also calculates expected values, as well as calculating and graphing 'ancestral probabilities'.
