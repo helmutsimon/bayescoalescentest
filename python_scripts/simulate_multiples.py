@@ -4,11 +4,11 @@
 """
     This script creates arrays of sfs data , branch lengths and relative branch lengths for a population genetic
      model using msprime. A primary use is to generate variates for a model as selected as a prior. The variates
-     are then used to generaye an MVN prior distribution corrrsponding approximately to the selected model.
+     are then used to generate an MVN prior distribution corresponding approximately to the selected model.
 
-    Parameters are job no, sample size, (diploid) population size, mutation rate, sequence length, population growth rate,
-    number of replicates, directory for logs and data (-d optional), number of parallel jobs (-j optional) and
-     msprime demographic events file (-e optional).
+    Parameters are job no, sample size, (diploid) population size, mutation rate, sequence length, population growth
+    rate, number of replicates, directory for logs and data (-d optional) and msprime demographic events file
+    (-e optional).
 
     A sample run statement is:
 
