@@ -31,7 +31,7 @@ import seaborn as sns
 __author__ = "Helmut Simon"
 __copyright__ = "© Copyright 2023, Helmut Simon"
 __license__ = "BSD-3"
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 __maintainer__ = "Helmut Simon"
 __email__ = "hsimon@bigpond.net.au"
 __status__ = "Test"
@@ -79,72 +79,6 @@ def Lehmer_distribution(n):
     return permutation
 
 
-def run_MCMC_Dirichlet(sfs, seq_mut_rate, sd_mut_rate, draws=50000, progressbar=False, order="random", cores=None,
-                       tune=None, step=None, target_accept=0.9, concentration=1.0):
-    """Define and run MCMC model for coalescent tree branch lengths using uniform (Dirichlet) prior."""
-    config.compute_test_value = 'raise'
-    n = len(sfs) + 1
-    prior = concentration * np.ones(n - 1)
-    j_n = np.diag(1 / np.arange(2, n + 1, dtype=np.float32))
-    sfs = np.array(sfs)
-    sfs = tt.as_tensor(sfs)
-    seg_sites = sum(sfs)
-    ttl_est = (seg_sites + 1) / seq_mut_rate
-    if order == "inc":
-        order = np.arange(n - 2)
-    elif order == "dec":
-        order = np.arange(n - 2)
-        order = np.flip(order)
-    else:
-        order = "random"
-
-    def infer_matrix_shape(fgraph, node, input_shapes):
-        return [(n - 1, n - 1)]
-
-    @as_op(itypes=[tt.lvector], otypes=[tt.fmatrix], infer_shape=infer_matrix_shape)
-    def jmatrix(i):
-        """Derive tree matrix from Lehmer code representation."""
-        mx = derive_tree_matrix(i)
-        mx = np.reshape(mx, (n - 1, n - 1))
-        mx = np.transpose(mx)
-        jmx = mx.dot(j_n)
-        jmx = jmx.astype('float32')
-        return jmx
-
-    with Model() as combined_model:
-        #Create sequence of categorical distributions to sample Lehmer code representation.
-        permutation = Lehmer_distribution(n)
-        permutation_tt = tt.as_tensor(permutation)
-        jmx = jmatrix(permutation_tt)
-
-        probs = Dirichlet('probs', prior)
-        q = tt.dot(jmx, probs.T)
-        sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=q, observed=sfs)
-
-        total_length = Gamma('total_length', alpha=1, beta=1e-10)
-        assert seq_mut_rate > sd_mut_rate, 'Mutation rate estimate must be greater than standard deviation.'
-        mut_rate = Beta('mut_rate', mu=seq_mut_rate, sd=sd_mut_rate)
-        mu = total_length * mut_rate
-        seg_sites_obs = Poisson('seg_sites_obs', mu=mu, observed=seg_sites)
-
-    with combined_model:
-        step1 = Metropolis([probs, mut_rate, total_length])
-        step2 = CategoricalGibbsMetropolis(permutation, order=order)
-        if tune is None:
-            tune = int(draws / 5)
-        start = {'total_length': ttl_est.eval()}
-        if step == "metr":
-            step = [step1, step2]
-            trace = sample(draws, tune=tune, step=step,
-                           progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
-        else:
-            step = step2
-            trace = sample(draws, tune=tune, step=step, nuts={'target_accept':target_accept},
-                           progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
-        assert trace['probs'].shape[0] == trace.nchains * draws, 'Draws not retrieved from all chains.'
-    return combined_model, trace
-
-
 #Define transforms for MVN (informative) prior
 xf = tt.matrix()
 out = StickBreaking().forward(xf)
@@ -153,67 +87,6 @@ forward_val = function([xf], out)
 xb = tt.matrix()
 out = StickBreaking().backward(xb)
 backward_val = function([xb], out)
-
-
-def run_MCMC_mvn(sfs, mrate_lower, mrate_upper, mu, sigma, ttl_mu, ttl_sigma, draws=50000,
-                 progressbar=False, order="random", cores=None, tune=None, step=None):
-    """Define and run MCMC model for coalescent tree branch lengths using a multivariate normal prior."""
-    config.compute_test_value = 'raise'
-    n = len(sfs) + 1
-    j_n = np.diag(1 / np.arange(2, n + 1, dtype=np.float32))
-    sfs = np.array(sfs)
-    sfs = tt.as_tensor(sfs)
-    seg_sites = sum(sfs)
-    if order == "inc":
-        order = np.arange(n - 2)
-    elif order == "dec":
-        order = np.arange(n - 2)
-        order = np.flip(order)
-    else:
-        order = "random"
-
-    def infer_matrix_shape(fgraph, node, input_shapes):
-        return [(n - 1, n - 1)]
-
-    @as_op(itypes=[tt.lvector], otypes=[tt.fmatrix], infer_shape=infer_matrix_shape)
-    def jmatrix(i):
-        """Derive tree matrix from Lehmer code representation."""
-        mx = derive_tree_matrix(i)
-        mx = np.reshape(mx, (n - 1, n - 1))
-        mx = np.transpose(mx)
-        jmx = mx.dot(j_n)
-        jmx = jmx.astype('float32')
-        return jmx
-
-    with Model() as combined_model:
-        # Create sequence of categorical distributions to sample Lehmer code representation.
-        permutation = Lehmer_distribution(n)
-        permutation_tt = tt.as_tensor(permutation)
-        jmx = jmatrix(permutation_tt)
-
-        mvn_sample = MvNormal('mvn_sample', mu=mu, cov=sigma, shape=(n - 2))
-        simplex_sample = StickBreaking().backward(mvn_sample)
-        q = tt.dot(jmx, simplex_sample.T)
-        sfs_obs = Multinomial('sfs_obs', n=seg_sites, p=q, observed=sfs)
-
-        total_length = Gamma('total_length', mu=ttl_mu, sigma=ttl_sigma)
-        mut_rate = Uniform('mut_rate', lower=mrate_lower, upper=mrate_upper)
-        mu = total_length * mut_rate
-        seg_sites_obs = Poisson('seg_sites_obs', mu=mu, observed=seg_sites)
-
-    with combined_model:
-        step1 = Metropolis([mvn_sample, mut_rate, total_length])
-        step2 = CategoricalGibbsMetropolis(permutation, order=order)
-        if step == "metr":
-            step = [step1, step2]
-        else:
-            step = step2
-        if tune is None:
-            tune = int(draws / 5)
-        trace = sample(draws, tune=tune, step=step, progressbar=progressbar,
-                       cores=cores, return_inferencedata=False)
-        assert trace['mvn_sample'].shape[0] == trace.nchains * draws, 'Draws not retrieved from all chains.'
-    return combined_model, trace
 
 
 def sample_Dirichlet_function(prior):
@@ -234,7 +107,7 @@ def sample_MVN_function(n, mu, sigma):
 
 
 def unfolded_probabilities(q0):
-    return (q0)
+    return q0
 
 
 def probabilities_function_folded(n):
@@ -249,10 +122,6 @@ def probabilities_function_folded(n):
         return np.multiply(pfold, mask)
 
     return folded_probabilities
-
-
-def unfolded_probabilities(q0):
-    return (q0)
 
 
 def sample_mutation_rate_Dirichlet_function(seq_mut_rate, sd_mut_rate):
@@ -276,7 +145,6 @@ def sample_ttl_Dirichlet_function():
 
 
 def sample_ttl_MVN_function(ttl_mu, ttl_sigma):
-
     def sample_ttl_MVN():
         return Gamma('total_length', mu=ttl_mu, sigma=ttl_sigma)
 
