@@ -44,7 +44,7 @@ cogent3, scipy, numpy, pandas, more-itertools, click, scitrack, matplotlib, seab
 
 ## 3. USING THE SOFTWARE
 
-### 3.1 Running inference with the modelL (python_scripts/run_bayesian_model.py)
+### 3.1 Running inference with the model (python_scripts/run_bayesian_model.py)
 
 run_bayesian_model.py requires an input file consisting of a Python list, pickled and compressed with gzip. The list contains two elements. The first is a site frequency spectrum comprising a list of integers.
 The second is a list of true branch lengths comprising a list of real numbers. True branch lengths are only available for data produced from a simulation, otherwise the second element of the list should be None. 
