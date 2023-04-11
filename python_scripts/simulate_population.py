@@ -23,6 +23,7 @@ import msprime
 from time import time
 import click
 from scitrack import CachingLogger, get_file_hexdigest
+from importlib_metadata import version
 
 
 abspath = os.path.abspath(__file__)
@@ -55,12 +56,10 @@ def main(job_no, pop_size, mutation_rate, length, growth_rate, n, dir, events_fi
         LOGGER.log_message(str(os.environ['CONDA_DEFAULT_ENV']), label="Conda environment.".ljust(17))
     except KeyError:
         pass
-    LOGGER.log_message('Name = ' + msprime.__name__ + ', version = ' + msprime.__version__,
-                       label="Imported module".ljust(25))
-    LOGGER.log_message('Name = ' + np.__name__ + ', version = ' + np.__version__,
-                       label="Imported module".ljust(25))
-    LOGGER.log_message('Name = ' + pd.__name__ + ', version = ' + pd.__version__,
-                       label="Imported module".ljust(25))
+    label = "Imported package".ljust(30)
+    LOGGER.log_message('Name = msprime, version = ' + version('msprime'), label=label)
+    LOGGER.log_message('Name = numpy, version = ' + version('numpy'), label=label)
+    LOGGER.log_message('Name = pandas, version = ' + version('numpy'), label=label)
     pop_size = int(pop_size)
     length = int(length)
     n_seq = np.arange(1, n)
@@ -109,7 +108,6 @@ def main(job_no, pop_size, mutation_rate, length, growth_rate, n, dir, events_fi
     var_thom = np.sum(sample_sfs * n_seq * n_seq) / (2 * n * length * mutation_rate) ** 2
     LOGGER.log_message(str(sample_sfs), label='SFS'.ljust(25))
     LOGGER.log_message(str(fsfs), label='Folded SFS'.ljust(25))
-    LOGGER.log_message(str(ancpr), label='True ancestral probabilities'.ljust(25))
     LOGGER.log_message(str(true_branch_lengths), label='True branch lengths'.ljust(25))
     LOGGER.log_message(str(np.sum(true_branch_lengths)), label='True TMRCA'.ljust(25))
     LOGGER.log_message("%.4f" % thom, label='Thomson TMRCA'.ljust(25))

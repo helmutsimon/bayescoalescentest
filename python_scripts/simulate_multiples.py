@@ -25,6 +25,7 @@ from collections import Counter
 from time import time
 import click
 from scitrack import CachingLogger, get_file_hexdigest
+from importlib_metadata import version
 
 
 abspath = os.path.abspath(__file__)
@@ -58,12 +59,11 @@ def main(job_no, pop_size, mutation_rate, length, growth_rate, n, num_replicates
         LOGGER.log_message(str(os.environ['CONDA_DEFAULT_ENV']), label="Conda environment.".ljust(17))
     except KeyError:
         pass
-    LOGGER.log_message('Name = ' + msprime.__name__ + ', version = ' + msprime.__version__,
-                       label="Imported module".ljust(25))
-    LOGGER.log_message('Name = ' + np.__name__ + ', version = ' + np.__version__,
-                       label="Imported module".ljust(25))
-    LOGGER.log_message('Name = ' + pd.__name__ + ', version = ' + pd.__version__,
-                       label="Imported module".ljust(25))
+    label = "Imported package".ljust(30)
+    LOGGER.log_message('Name = msprime, version = ' + version('msprime'), label=label)
+    LOGGER.log_message('Name = numpy, version = '   + version('numpy'), label=label)
+    LOGGER.log_message('Name = pandas, version = '  + version('numpy'), label=label)
+
     pop_size = int(pop_size)
     length = int(length)
     np.set_printoptions(precision=3)
