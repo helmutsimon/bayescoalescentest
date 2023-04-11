@@ -21,7 +21,7 @@ from scitrack import CachingLogger, get_file_hexdigest
 import warnings
 from packaging.version import parse
 import matplotlib
-from importlib.metadata import version
+from importlib_metadata import version
 
 abspath = os.path.abspath(__file__)
 projdir = "/".join(abspath.split("/")[:-2])
