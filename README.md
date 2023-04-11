@@ -1,7 +1,6 @@
 # bayescoalescentest
 
-## NEW:
-The software has been modified to allow inference from a folded SFS (where ancestral states are unknown). In many cases, this appears to have a relatively minor effect on inference outcomes. Note, however, that sample size (*n*) is now a **mandatory parameter** for run_bayesian_model.py, even for an unfolded SFS. It is the second mandatory parameter, appearing after the job identifier. In addition, the inference of the basal split has also been made more explicit.
+**_See Discussions tab for recent changes._**
 
 ## 1. OVERVIEW
 bayescoalescentest estimates several parameters for coalescent trees using Bayesian inference on genomic data sampled from a study population (sample size = *n*). The data  may take the form of a folded or unfolded site frequency spectrum (SFS). In the former case, the ancestral states are unknown. In Bayesian style, samples from a posterior distribution are generated for estimated quantities and expected values of these may be taken as point estimates for those quantities.
@@ -25,22 +24,38 @@ The software also provides methods for visualising the posterior distributions.
 
 Theory and examples are available in the manuscript: Simon, H. and Huttley, G., 2021 *Bayesian Inference of Joint Coalescence Times for Sampled Sequences*. bioRxiv doi = 10.1101/2021.07.23.453461.
 
-## 2. INSTALLATION (for PyMC3 3.11.2)
+## 2. INSTALLATION (for PyMC3 3.11.5)
 
-### 2.1 Create Conda environment and install PyMC3 (see https://discourse.pymc.io/t/pymc3-final-stable-release-on-conda/8172)
+Create Conda environment and install PyMC3. The following is for MacOS on Intel.  (based on Installation section of https://pypi.org/project/pymc3/3.11.5/)
 
 ```
-conda create --name pymc3.11.2 python=3.9
-conda activate pymc3.11.2
-conda install -c conda-forge mkl pymc3 theano-pymc
-pip3 install jupyter
+conda create -c conda-forge -n pymc3.11.5 python pymc3 theano-pymc mkl mkl-service arviz=0.12.1 python=3.9
+conda activate pymc3.11.5
 ```
 
-The following packages should be installed:
+Installation of additional packages is required as follows:
 
-cogent3, scipy, numpy, pandas, more-itertools, click, scitrack, matplotlib, seaborn, msprime (if simulations are required)
+```
+conda install click scitrack seaborn jupyter
+python -m pip install more_itertools
+```
 
-### 2.2 Clone bayescoalescentest repository from GitHub.
+The following may be required to get the new Conda environment to appear in Jupyter's drop-down list of environments:
+
+```
+jupyter kernelspec remove python3
+conda install -c anaconda ipykernel
+python -m ipykernel install --user --name=pymc3.11.5
+```
+
+Then clone bayescoalescentest repository from GitHub.
+
+The software was tested with the following software versions:
+ - python 3.9.16
+ - pymc3 3.11.5
+ - theano 1.1.2
+ - arviz 0.12.1 (now minimum requirement)
+ - numpy 1.22.1
 
 ## 3. USING THE SOFTWARE
 
@@ -97,7 +112,7 @@ Optional parameters are:
     -d  directory name for data, default is 'data'
     -e  events_file. This is used for more complex demographies. It is a .csv file with columns headed 'time', 'size' and 'rate'. For each row the 'time' field is the number of generations into the past at which a demographic change occurred. 'Size' and 'rate' are the population size and growth rate from that time point (going backward into past).  The initial population size and growth rate (from time=0) are given by the mandatory parameters.
 
-### 3.3 GENERATE SAMPLE DATA FOR NODEL-BASED (MVN) PRIOR (simulate_multiples.py)
+### 3.3 GENERATE SAMPLE DATA FOR MODEL-BASED (MVN) PRIOR (simulate_multiples.py)
 
 
 simulate_multiples.py generates csv files of samples of branch lengths and relative branch lengths as input to run_bayesian_model.py if an MVN prior is used.
