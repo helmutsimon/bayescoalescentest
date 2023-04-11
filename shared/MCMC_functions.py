@@ -5,7 +5,6 @@ This file contains MCMC and associated routines for Bayesian inference of coales
 
 Notes:
     1. Multiprocessing does not work on all systems. Ubuntu 18.04.5 yes, MacOS no.
-
 """
 
 from pymc3.distributions.multivariate import Multinomial, MvNormal, Dirichlet
@@ -17,6 +16,8 @@ from pymc3.step_methods.metropolis import Metropolis, CategoricalGibbsMetropolis
 from pymc3.distributions.transforms import StickBreaking
 from theano import config, function
 import theano.tensor as tt
+import arviz
+import xarray as xr
 from theano.compile.ops import as_op
 import numpy as np
 import functools
@@ -31,7 +32,7 @@ import seaborn as sns
 __author__ = "Helmut Simon"
 __copyright__ = "© Copyright 2023, Helmut Simon"
 __license__ = "BSD-3"
-__version__ = "0.3.0"
+__version__ = "0.5.0"
 __maintainer__ = "Helmut Simon"
 __email__ = "hsimon@bigpond.net.au"
 __status__ = "Test"
@@ -175,7 +176,7 @@ def Thomson_estimate(sfs, mrate):
 def run_MCMC(n, sfs, variable_name, seq_mut_rate=None, sd_mut_rate=None,
              mrate_lower=None, mrate_upper=None, mu=None, sigma=None, ttl_mu=None, ttl_sigma=None,
              folded=False, draws=50000, progressbar=False, order="random",
-             cores=None, tune=None, step=None, target_accept=0.9, concentration=1.0):
+             cores=None, tune=None, target_accept=0.9, return_inferencedata=True, concentration=1.0):
     """Define and run MCMC model for coalescent tree branch lengths. This function allows the following options:
        - uninformative (Dirichlet, given by setting variable-name parameter to 'probs') vs model-based
          (MVN, given by setting variable-name parameter to 'mvn_sample') prior distributions; and
@@ -246,40 +247,35 @@ def run_MCMC(n, sfs, variable_name, seq_mut_rate=None, sd_mut_rate=None,
         seg_sites_obs = Poisson('seg_sites_obs', mu=mu, observed=seg_sites)
 
     with combined_model:
-        step1 = Metropolis([probs, mut_rate, total_length])
-        step2 = CategoricalGibbsMetropolis(permutation, order=order)
+        step = CategoricalGibbsMetropolis(permutation, order=order)
         if tune is None:
             tune = int(draws / 5)
-        #start = {'total_length': startval}
-        if step == "metr":
-            step = [step1, step2]
-            trace = sample(draws, tune=tune, step=step,
-                           progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
-        else:
-            step = step2
-            trace = sample(draws, tune=tune, step=step, nuts={'target_accept': target_accept},
-                           progressbar=progressbar, return_inferencedata=False, start=start, cores=cores)
-        assert trace[variable_name].shape[0] == trace.nchains * draws, 'Draws not retrieved from all chains.'
+        trace = sample(draws, tune=tune, step=step, nuts={'target_accept': target_accept},
+                    progressbar=progressbar, return_inferencedata=return_inferencedata, start=start, cores=cores)
+    # Transform MVN variates back into simplex and include in InferenceData object (trace)
+    if variable_name == 'mvn_sample':
+        chaindim      = trace.posterior.dims['chain']
+        drawdim       = trace.posterior.dims['draw']
+        mvn_sampledim = trace.posterior.dims['mvn_sample_dim_0']
+        y = np.reshape(trace.posterior.mvn_sample.data, (chaindim * drawdim, mvn_sampledim))
+        z = backward_val(y)
+        w = np.reshape(z, (chaindim, drawdim, mvn_sampledim + 1))
+        pr = xr.DataArray(data=w, dims=({'chain': chaindim, 'draw': drawdim, 'probs_dim_0': mvn_sampledim + 1}))
+        trace.posterior['probs'] = pr
     return combined_model, trace
 
 
-def multiply_variates(trace, variable_name):
+def multiply_variates(stacked):
     """
-    Multiply variates for relative branch length and total tree length to obtain variates for absolute
-    branch length.
+    Multiply variates for relative branch length and total tree length to obtain variates for absolute branch length.
     variable_name is 'mvn_sample' for multivariate normal prior, 'probs' for flat Dirichlet prior.
-
     """
-    vars_rel = trace[variable_name]
-    vars_rel = np.array(vars_rel)
-    if variable_name == 'mvn_sample':
-        vars_rel = backward_val(vars_rel)
+    vars_rel = stacked['probs'].values.T
     size = vars_rel.shape[0]
     n0 = vars_rel.shape[1]
     j_n = np.diag(1 / np.arange(2, n0 + 2))
     vars_rel = j_n.dot(vars_rel.T)
-    vars_TTL = trace['total_length']
-    vars_TTL = np.array(vars_TTL)
+    vars_TTL = stacked['total_length'].values
     assert size == len(vars_TTL), 'Mismatch between number of draws for rel branch lengths and TTL.'
     vars_TTL.shape = (size, 1)
     vars_TTL3 = np.repeat(vars_TTL, n0, axis=1).T
