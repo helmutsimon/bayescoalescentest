@@ -134,8 +134,7 @@ Optional parameters are:
 
 ### 3.4 PRESENT AND VISUALISE RESULTS (plots_and_tables/plots and tables.ipynb)
 
-
-    This Jupiter notebook allows display of posterior distributions of branch lengths and coalescent times in the form of line graphs and heat maps. It also calculates expected values, as well as calculating and graphing 'ancestral probabilities'.
+This Jupiter notebook allows display of posterior distributions of branch lengths and coalescent times in the form of line graphs and heat maps. It also calculates expected values, as well as calculating and graphing 'ancestral probabilities'.
     
 ## 4. RELATION TO PREVIOUS METHODS
 
