@@ -37,7 +37,7 @@ Installation of additional packages is required as follows:
 
 ```
 conda install click scitrack seaborn jupyter
-python -m pip install more_itertools
+python -m pip install more_itertools importlib_metadata
 ```
 
 The following may be required to get the new Conda environment to appear in Jupyter's drop-down list of environments:
@@ -102,7 +102,7 @@ simulate_population.py allows simulated data to be generated using msprime, crea
 
     - job_no  (used to label output)
     - population size
-    - **site** mutation rate
+    - site mutation rate
     - length  (length of genome segment being analysed in base pairs
     - initial population growth rate per generation
     - sample size
@@ -122,7 +122,7 @@ Mandatory parameters for simulate_multiples.py are:
     - job_no  (used to label output)
     - sample size
     - population size
-    - **site** mutation rate
+    - site mutation rate
     - length  (length of genome segment being analysed in base pairs
     - population growth rate per generation
     - number of samples to generate
