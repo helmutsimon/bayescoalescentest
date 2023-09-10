@@ -95,7 +95,7 @@ def analyse_MCMC_results(job_no, trace):
     n = len(trace.posterior.probs_dim_0) + 1
     print('Sample size =', n)
 
-    summaryx = arviz.summary(trace)
+    summaryx = arviz.summary(trace, round_to='none')
     print('\n', summaryx)
     csv_name = 'pm_summary_' + job_no + '.csv'
     summaryx.to_csv(csv_name, sep=',')
